@@ -1,0 +1,627 @@
+---
+title: "Ferramenta para análises de experiências turísticas do Tripadvisor"
+author: "Daphne Spier"
+date: "2023-04-13"
+output:
+  html_document: 
+    toc: true
+text-align: justify
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE,  fig.align="center")
+
+
+```
+
+
+
+
+```{r}
+
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load(devtools, rvest, httr, XML, dplyr, textreuse, rslp, tm, proxy, factoextra, text2vec, ngram, ggplot2, stringr, stringi, cluster, dendextend, wordcloud, wordcloud2, rmarkdown, knitr, gridExtra, kableExtra, textreuse, syuzhet, RColorBrewer, tidyverse, reshape2, lexiconPT, textdata, tidyr, scales, broom, purrr, widyr,igraph, ggraph, SnowballC, RWekajars, dplyr, tidytext, sentimentBR, topicmodels, quanteda, quanteda.corpora, quanteda.textstats, bookdown, DT)
+
+# clean data 
+clean_text = function(dados)
+{
+  x <- c("muita", "muito","ser", "outro", "outra", "tava", "pra", "vai", "vimo", "havia", "cal", "ter",  "ali", "aqui", "tudo", "todo")
+   file <- url("https://jodavid.github.io/Slide-Introdu-o-a-Web-Scrapping-com-rvest/stopwords_pt_BR.txt")
+  stopwords_ptBR <- read.table(file)
+  stopwords_ptBR <- unlist(stopwords_ptBR, use.names = FALSE)
+  stopwords_comentarios <- stopwords("portuguese")
+  stopwords_iso<-sort(stopwords::stopwords("pt", source = "stopwords-iso"))
+  stopwords<-c(stopwords_comentarios,stopwords_ptBR, stopwords_iso, x)
+  dups2 <- duplicated(stopwords)
+  sum(dups2)
+  stopwords <- stopwords[!dups2]
+  n_stopwords <- c("não", "nao")
+  stopwords <-  removeWords(stopwords, n_stopwords)
+  dados <- gsub("\n"," ", dados)
+  dados<- gsub("\\b\\w{1,2}\\b\\s*", "", dados)
+  dados <- gsub("[[:punct:]]"," ",dados)
+  dados <- gsub("([^rs])(?=\\1+)|(rr)(?=r+)|(ss)(?=s+)", "",  dados, perl = TRUE)
+  dados <- gsub("[^[:alnum:][:space:]]", "", iconv(dados, to = "UTF-8//TRANSLIT"))
+  #dados<- stemDocument(dados)
+  dados <- tolower(dados)
+  dados<- removeNumbers(dados)
+  dados <- removeWords(dados, stopwords)
+  dados<- stripWhitespace(dados)
+  dados<- na.omit(dados)
+  return(dados)
+}
+
+
+# stemming 
+dtm = function(dados){
+  corpus = Corpus(VectorSource(dados))
+  tdm<-TermDocumentMatrix(corpus, control = list(minWordLength = 3))
+  dtm<- DocumentTermMatrix(corpus, control = list(wordLengths = c(3,Inf)))
+  return(dtm)
+}
+
+tdm = function(dados){
+  corpus = Corpus(VectorSource(dados))
+  tm::TermDocumentMatrix(corpus, control = list(minWordLength = 3))
+}
+
+
+freq_ngrams <- function(dados, n){
+  dados <- tibble(dados)
+  dados <- dados %>%
+    filter(is.na(dados) == FALSE)
+  ngrams <- dados %>%
+    unnest_tokens(ngram, dados, token = "ngrams", n = n)%>%
+    filter(!is.na(ngram)) %>%
+    count(ngram, sort = TRUE)
+  return(ngrams)
+}
+
+
+plot_freq<- function(df){ 
+  df %>%
+  head(40 )%>%
+  mutate(ngram = reorder(ngram, n)) %>%
+  ggplot(aes(ngram, n)) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(labels = comma_format()) +
+  coord_flip() 
+}
+
+
+
+
+```
+
+
+##  Carregando dados
+
+```{r }
+
+source("../00_Scripts/funcoes.r")
+dados<- read.csv2("../01_Dados/00_Comentariossuperagui.csv", encoding = 'UTF-8')
+data<-dados[,2]
+datatable(dados)
+
+
+```
+
+
+
+<!-- toc -->
+## Limpeza dos dados
+clean <- clean_text(data)
+
+```{r }
+
+
+dados<-tibble(dados)
+dados = clean_text(dados)
+data  <- clean_text(data)
+
+
+```
+
+<!-- toc -->
+## Frequência
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+df<-freq_ngrams(dados, 1)
+df2<-freq_ngrams(dados, 2)
+df3<-freq_ngrams(dados, 3)
+df4<-freq_ngrams(dados, 4)
+df5<-freq_ngrams(dados, 5)
+
+datatable(df)
+datatable(df2)
+datatable(df3)
+datatable(df4)
+datatable(df5)
+
+
+
+```
+
+<!-- toc -->
+## N-Gramas
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+
+
+plot_freq(df)
+plot_freq(df2)
+plot_freq(df3)
+plot_freq(df4)
+plot_freq(df5)
+
+
+```
+
+
+
+<!-- toc -->
+## Bigramas de negação
+
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+# Obtém os bigramas das comentarioss
+l=40
+bigram_comentarios <- ngram(data, n =2)
+bigram_comentarios <- get.phrasetable(bigram_comentarios)
+
+# seleciona bigrama com a palavra nao no comeco
+nao <- select_word_vetor("não",bigram_comentarios[,1:2],posicao = 1)
+nao_bigram <- nao[1:l,]
+
+# calcula frequencia relativa de bigramas das comentarioss
+birelativoEm <- FreqR_Frase(bigram_comentarios[1:l,1],data)
+birelativoEm <- birelativoEm[head(order(birelativoEm[,2],decreasing = TRUE),dim(birelativoEm)[1]),]
+
+nao_bigram %>%
+  head(30) %>%
+  mutate(ngrams = reorder(ngrams, freq)) %>%
+  ggplot(aes(ngrams, freq)) +
+  geom_col(fill = "lightblue") +
+  scale_y_continuous(labels = comma_format()) +
+  coord_flip() +
+  labs(title = "Bigramas_Negação",
+       y = "Frequencia Absoluta_Bigramas_Negação")
+  ggsave(paste0("../02_Resultados/jalapao/Jalapão_Bigrama_Negacao.png"))
+
+
+```
+
+
+
+
+<!-- toc -->
+## Nuvens de Palavras
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+
+plot_wordcloud<-function(df){ 
+        wordcloud(words = df$ngram,
+                freq = df$n,
+                max.words = 80,
+                scale = c(3,0.2),
+                colors = brewer.pal(8, "Dark2"))
+}
+
+plot_wordcloud(df)
+plot_wordcloud(df2)
+plot_wordcloud(df3)
+plot_wordcloud(df4)
+plot_wordcloud(df5)
+
+
+
+
+```
+
+<!-- toc -->
+## Análise  de sentimentos
+
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+sentimentos <- dados %>%
+  unnest_tokens(word, data, drop = FALSE) %>%
+  mutate(polaridade = unlist(get_polaridade_vec(word)))
+
+token_sentiments <- sentimentos %>%
+  mutate(polaridade = unlist(get_polaridade_vec(sentimentos$word))) %>%
+  mutate(sentimento = factor(polaridade, levels = c(-1,0,1), labels = c("Negativo", "Neutro", "Positivo")))
+
+token_sentiments_counts <- token_sentiments %>% count(word, polaridade, sentimento, sort = TRUE)
+
+token_sentiments_counts %>%
+  filter(polaridade != 0) %>%
+  acast(word ~ sentimento, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("red4", "green4"),max.words = 100)
+ggsave(paste0("../02_Resultados/jalapao/Jalapão_wordcloud_sentimentos.png"))
+
+sentimentos_tab <- dados %>%
+  unnest_tokens(word, data, drop = FALSE) %>%
+  mutate(polaridade = unlist(get_polaridade_vec(word))) %>%
+  group_by(data) %>%
+  summarise(sentimento = sum(polaridade)) %>%
+  mutate(sentimento = ifelse(sentimento > 0, "Positivo",
+                             ifelse(sentimento < 0, "Negativo",
+                                    "Neutro")))
+
+```
+
+<!-- toc -->
+## Rede de Palavras
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+set.seed(1234)
+review_bigrams <- dados %>%
+  unnest_tokens(bigram, data, token = "ngrams", n = 2) %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  count(word1, word2, sort = TRUE)
+
+review_bigrams %>%
+  filter(n >= 35) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "blue") +
+  geom_node_point() +
+  geom_node_text(aes(label = name), repel = TRUE,
+                 point.padding = unit(0.2, "lines")) +
+  ggtitle('Rede de Palavras dos bigramas do TripAdvisor')
+  ggsave(paste0("../02_Resultados/jalapao/bigramas_redes_jalapao.png"))
+
+#####################################################################################
+
+  review_trigrams <- dados %>%
+    unnest_tokens(trigram, data, token = "ngrams", n = 3) %>%
+    separate(trigram, c("word1", "word2", "word3"), sep = " ") %>%
+    count(word1, word2, word3, sort = TRUE)
+
+  review_trigrams %>%
+    filter(n >= 8) %>%
+    graph_from_data_frame() %>%
+    ggraph(layout = "fr") +
+    geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "blue") +
+    geom_node_point(size = 3) +
+    geom_node_text(aes(label = name), repel = TRUE,
+                   point.padding = unit(0.2, "lines")) +
+    ggtitle('Rede de Palavras dos trigramas do TripAdvisor')
+  ggsave(paste0("../02_Resultados/jalapao/trigramas_redes_jalapao.png"))
+
+```
+
+
+
+
+<!-- toc -->
+## Clusterização
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+dtm<- DocumentTermMatrix(corpus, control = list(wordLengths = c(3,Inf)))
+dtms <- removeSparseTerms(dtm, 0.88)
+dtms_matrix <- as.matrix(dtms)
+dist <- dist(t(dtms_matrix), method="euclidean")
+fit_comentarios <- hclust(d=dist, method="complete")
+dend_comentarios <- color_branches(fit_comentarios, k = 8)
+par( mar = c(4,4,4,2)+2.5)
+plot(dend_comentarios, yaxt='n')
+ggsave(paste0("../02_Resultados/jalapao/dendrograma_col_jalapao.png"))
+plot(fit_comentarios, xlab = "Distance", ylab = NULL)
+ggsave(paste0("../02_Resultados/jalapao/dendrograma_jalapao.png"))
+```
+
+<!-- toc -->
+## Análise de tópicos
+
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+my_table<- freq_comentarios %>%
+  mutate(ID = 1:nrow(freq_comentarios))%>%
+  select(ID, Palavra, Freq)
+colnames(my_table)<-c("id", "term", "freq")
+
+dtm<-my_table %>%
+  cast_dtm(id, term, freq)
+
+
+ap_lda <- LDA(dtm , k = 4, control = list(seed = 123))
+terms(ap_lda, 10)
+
+ap_topics <- tidy(ap_lda, matrifreq_comentarios = "beta")
+
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  top_n(20, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+ap_top_terms %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao", "_topicos.png"))
+
+beta_spread <- ap_topics %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  spread(topic, beta) %>%
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+
+
+beta_spread %>%
+  group_by(direction = log_ratio > 0) %>%
+  top_n(10, abs(log_ratio)) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, log_ratio)) %>%
+  ggplot(aes(term, log_ratio)) +
+  geom_col() +
+  labs(y = "Razão logarítmica de beta no tópico 2 / tópico 1") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao", "_topicos_log.png"))
+
+
+
+```
+
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+my_table<- bigram_comentarios %>%
+  mutate(ID = 1:nrow(bigram_comentarios))%>%
+  select(ID, ngrams, freq)
+colnames(my_table)<-c("id", "term", "freq")
+
+dtm<-my_table %>%
+  cast_dtm(id, term, freq)
+
+
+ap_lda <- LDA(dtm , k = 4, control = list(seed = 123))
+terms(ap_lda, 10)
+
+ap_topics <- tidy(ap_lda, matribigram_comentarios = "beta")
+
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  top_n(20, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+ap_top_terms %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao_bigramas", "_topicos.png"))
+
+beta_spread <- ap_topics %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  spread(topic, beta) %>%
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+
+
+beta_spread %>%
+  group_by(direction = log_ratio > 0) %>%
+  top_n(10, abs(log_ratio)) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, log_ratio)) %>%
+  ggplot(aes(term, log_ratio)) +
+  geom_col() +
+  labs(y = "Razão logarítmica de beta no tópico 2 / tópico 1") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao_bigramas", "_topicos_log.png"))
+
+
+
+```
+trigramas
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+my_table<- trigram_comentarios %>%
+  mutate(ID = 1:nrow(trigram_comentarios))%>%
+  select(ID, ngrams, freq)
+colnames(my_table)<-c("id", "term", "freq")
+
+dtm<-my_table %>%
+  cast_dtm(id, term, freq)
+
+
+ap_lda <- LDA(dtm , k = 4, control = list(seed = 123))
+terms(ap_lda, 10)
+
+ap_topics <- tidy(ap_lda, matritrigram_comentarios = "beta")
+
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  top_n(20, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+ap_top_terms %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao_trigramas", "_topicos.png"))
+
+beta_spread <- ap_topics %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  spread(topic, beta) %>%
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+
+
+beta_spread %>%
+  group_by(direction = log_ratio > 0) %>%
+  top_n(10, abs(log_ratio)) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, log_ratio)) %>%
+  ggplot(aes(term, log_ratio)) +
+  geom_col() +
+  labs(y = "Razão logarítmica de beta no tópico 2 / tópico 1") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao_trigramas", "_topicos_log.png"))
+
+
+
+```
+
+tetragramas
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+my_table<- tetragram_comentarios %>%
+  mutate(ID = 1:nrow(tetragram_comentarios))%>%
+  select(ID, ngrams, freq)
+colnames(my_table)<-c("id", "term", "freq")
+
+dtm<-my_table %>%
+  cast_dtm(id, term, freq)
+
+
+ap_lda <- LDA(dtm , k = 4, control = list(seed = 123))
+terms(ap_lda, 10)
+
+ap_topics <- tidy(ap_lda, matritetragram_comentarios = "beta")
+
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  top_n(20, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+ap_top_terms %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao_tetragramas", "_topicos.png"))
+
+beta_spread <- ap_topics %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  spread(topic, beta) %>%
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+
+
+beta_spread %>%
+  group_by(direction = log_ratio > 0) %>%
+  top_n(10, abs(log_ratio)) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, log_ratio)) %>%
+  ggplot(aes(term, log_ratio)) +
+  geom_col() +
+  labs(y = "Razão logarítmica de beta no tópico 2 / tópico 1") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao_tetragramas", "_topicos_log.png"))
+
+
+
+```
+
+
+
+pentagramas
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+my_table<- pentagram_comentarios %>%
+  mutate(ID = 1:nrow(pentagram_comentarios))%>%
+  select(ID, ngrams, freq)
+colnames(my_table)<-c("id", "term", "freq")
+
+dtm<-my_table %>%
+  cast_dtm(id, term, freq)
+
+
+ap_lda <- LDA(dtm , k = 4, control = list(seed = 123))
+terms(ap_lda, 10)
+
+ap_topics <- tidy(ap_lda, matripentagram_comentarios = "beta")
+
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  top_n(20, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+ap_top_terms %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao_pentagramas", "_topicos.png"))
+
+beta_spread <- ap_topics %>%
+  mutate(topic = paste0("topic", topic)) %>%
+  spread(topic, beta) %>%
+  filter(topic1 > .001 | topic2 > .001) %>%
+  mutate(log_ratio = log2(topic2 / topic1))
+
+
+beta_spread %>%
+  group_by(direction = log_ratio > 0) %>%
+  top_n(10, abs(log_ratio)) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, log_ratio)) %>%
+  ggplot(aes(term, log_ratio)) +
+  geom_col() +
+  labs(y = "Razão logarítmica de beta no tópico 2 / tópico 1") +
+  coord_flip()
+ggsave(paste0("../02_Resultados/jalapao/Japapao_pentagramas", "_topicos_log.png"))
+
+
+
+```
+
+<!-- toc -->
+## Salva Tabelas
+
+
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+bigram<-cbind(bigram_comentarios[1:l,1:2], round(birelativoEm$FreqR, 2), nao_bigram)
+colnames(bigram)[1:5]<-c("ngrams", "FA", "FR", "ngrams_nao", "FA")
+trigram<-cbind(trigram_comentarios[1:l,1:2], round(trirelativo$FreqR, 2), nao_trigram)
+colnames(trigram)[1:5]<-c("ngrams", "FA", "FR", "ngrams_nao", "FA")
+tetragram<-cbind(tetragram_comentarios[1:l,1:2], round(tetrarelativo$FreqR, 2), nao_tetragram)
+colnames(tetragram)[1:5]<-c("ngrams", "FA", "FR", "ngrams_nao", "FA")
+pentagram<-cbind(pentagram_comentarios[1:l,1:2], round(pentarelativo$FreqR, 2), nao_pentagram)
+colnames(pentagram)[1:5]<-c("ngrams", "FA", "FR", "ngrams_nao", "FA")
+freq<-cbind(freq_comentarios[1:l,1:2], round(relativa_comentarios[1:l,2:2], 2))
+colnames(freq)[1:3]<-c("ngrams", "FA", "FR")
+
+
+write.table(bigram, "../02_Resultados/jalapao/01_Bigrama_jalapao.csv",sep=";", dec=".", fileEncoding = 'UTF-8', row.names = F)
+write.table(trigram, "../02_Resultados/jalapao/02_Trigrama_jalapao.csv",sep=";",dec=".", fileEncoding = 'UTF-8', row.names = F)
+write.table(tetragram, "../02_Resultados/jalapao/03_Quadrigrama_jalapao.csv",sep=";",dec=".", fileEncoding = 'UTF-8', row.names = F)
+write.table(pentagram, "../02_Resultados/jalapao/04_Pentagrama_jalapao.csv",sep=";",dec=".", fileEncoding = 'UTF-8', row.names = F)
+write.table(sort(stopwords), "../02_Resultados/jalapao/Stopwords.csv",sep=";", dec=".",fileEncoding = 'UTF-8', row.names = F)
+write.table(sentimentos_tab, "../02_Resultados/jalapao/Sentimentos_jalapao.csv",sep=";",dec=".", fileEncoding = 'UTF-8', row.names = F)
+write.table(freq, "../02_Resultados/jalapao/Frequencia_absoluta_jalapao.csv",sep=";",dec=".", fileEncoding = 'UTF-8', row.names = F)
+
+```
