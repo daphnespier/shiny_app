@@ -1,6 +1,6 @@
-if(!require(pacman)) install.packages("pacman")
-pacman::p_load(devtools, rvest, httr, XML, dplyr, textreuse, rslp, tm, proxy, factoextra, text2vec, ngram, ggplot2, stringr, stringi, cluster, dendextend, wordcloud, wordcloud2, rmarkdown, knitr, gridExtra, kableExtra, textreuse, syuzhet, RColorBrewer, tidyverse, reshape2, lexiconPT, textdata, tidyr, scales, broom, purrr, widyr,igraph, ggraph, SnowballC, RWekajars, dplyr, tidytext, sentimentBR, topicmodels, quanteda, quanteda.corpora, quanteda.textstats, bookdown, DT, magrittr, shiny)
-
+require(pacman)
+pacman::p_load(devtools, rvest, httr, XML, dplyr, textreuse, rslp, tm, proxy, factoextra, text2vec, ngram, ggplot2, stringr, stringi, cluster, dendextend, wordcloud, wordcloud2, rmarkdown, knitr, gridExtra, kableExtra, textreuse, syuzhet, RColorBrewer, tidyverse, reshape2, lexiconPT, textdata, tidyr, scales, broom, purrr, widyr,igraph, ggraph, SnowballC, RWekajars, dplyr, tidytext,  topicmodels, quanteda, bookdown, DT, magrittr, shiny, shinyjs)
+options(repos = c("MyRepo"="http://packages.example.com", "CRAN"="https://cran.rstudio.org"))
 
 
 # clean data 
@@ -86,8 +86,10 @@ shinyApp(
     hr(),
     
     sidebarPanel(
+      sliderInput("height", "height", min = 100, max = 800 , value = 550),
+      sliderInput("width", "width", min = 100, max = 800, value = 650),
       # select a file 
-      fileInput("file", label = h3("Source"), multiple = FALSE),
+      fileInput("file", label = h4("Source"), multiple = FALSE),
       
       # add a reset button 
       actionButton("reset", "Reset File"),
@@ -108,25 +110,48 @@ shinyApp(
                   
                   '),
       
+      
       # parameters for each plot
+      
+      conditionalPanel(condition="input.conditionedPanels == 2",
+                       hr(),
+                       h4("Escala"),
+                       helpText("Tamanho das letras"),
+                       sliderInput("size", label = "", min = 8, max =26, 
+                                   value = 12, step = 2)),
+     
+      
       conditionalPanel(condition="input.conditionedPanels==2",
                        hr(),
-                       h3("Parameters"),
-                       helpText("Number of Most Frequent Words"),
+                       h4("Número de N-gramas"),
                        sliderInput("n1", label = "", min = 1, max = 100, 
                                    value = 20, step = 1)),
       
       conditionalPanel(condition="input.conditionedPanels==3",
                        hr(),
-                       h3("Parameters"),
-                       helpText("Number of Most Frequent Words"),
+                       h4("Número de N-gramas"),
                        sliderInput("n2", label = "", min = 1, max = 100, 
-                                   value = 50, step = 1)),
+                                   value = 80, step = 1)),
+      
+      
+      conditionalPanel(condition="input.conditionedPanels == 3",
+                       hr(),
+                       h4("Escala"),
+                       helpText("Tamanho das letras"),
+                       sliderInput("size3", label = "", min = 1, max =10, 
+                                   value = 4, step = 1)),
+      
+      conditionalPanel(condition="input.conditionedPanels == 3",
+                       hr(),
+                       helpText("Espaço entre palavras"),
+                       sliderInput("size2", label = "", min = 0.1, max =2, 
+                                   value = 0.2, step = 0.1)),
+  
       
       conditionalPanel(condition="input.conditionedPanels == 4 ||
                        input.conditionedPanels == 5||input.conditionedPanels == 6",
                        hr(),
-                       h3("Parameters"),
+                       h4("Parameters"),
                        helpText("Sparsity"),
                        sliderInput("sparsity", label = "", min = 0, max = 1, 
                                    value = 0.87, step = 0.01)),
@@ -139,8 +164,10 @@ shinyApp(
       
     ),
     
+   
+    
     mainPanel(
-      
+     
       # show plots 
       tabsetPanel(
         tabPanel("Dados importados", value = 1, DT::dataTableOutput("value")),
@@ -151,20 +178,33 @@ shinyApp(
                    tabPanel("Tetragramas", dataTableOutput("table4")),
                    tabPanel("Pentagramas", dataTableOutput("table5"))),
         navbarMenu("Graficos de Frequencia", 
-                   tabPanel("Palavras", value = 2, plotOutput("plot1")), 
-                   tabPanel("Bigramas", value = 2, plotOutput("plot6")), 
-                   tabPanel("Trigramas", value = 2, plotOutput("plot7")), 
-                   tabPanel("Tetragramas", value = 2, plotOutput("plot8")), 
-                   tabPanel("Pentagramas", value = 2, plotOutput("plot9"))), 
+                   tabPanel("Palavras", value = 2, plotOutput("plot1"),
+                            width = 250, height = 250), 
+                   tabPanel("Bigramas", value = 2, plotOutput("plot6"),
+                            width = 250, height = 250),  
+                   tabPanel("Trigramas", value = 2, plotOutput("plot7"),
+                            width = 250, height = 250), 
+                   tabPanel("Tetragramas", value = 2, plotOutput("plot8"),
+                            width = 250, height = 250), 
+                   tabPanel("Pentagramas", value = 2, plotOutput("plot9"),
+                            width = 250, height = 250)), 
         navbarMenu("Nuvens de Palavras", 
-                   tabPanel("Palavras", value = 3, plotOutput("plot2")), 
-                   tabPanel("Bigramas", value = 3, plotOutput("plot10")), 
-                   tabPanel("Trigramas", value = 3, plotOutput("plot11")),
-                   tabPanel("Tetragramas", value = 3, plotOutput("plot12")),
-                   tabPanel("Pentagramas", value = 3, plotOutput("plot13"))),
-        tabPanel("Clusterizacao", value = 4, plotOutput("plot3")),
-        tabPanel("KMeans", value = 5, plotOutput("plot4")),
-        tabPanel("Redes", value = 6, plotOutput("plot5")),
+                   tabPanel("Palavras", value = 3, plotOutput("plot2"),
+                            width = 250, height = 250), 
+                   tabPanel("Bigramas", value = 3, plotOutput("plot10"),
+                            width = 250, height = 250), 
+                   tabPanel("Trigramas", value = 3, plotOutput("plot11"),
+                            width = 250, height = 250),
+                   tabPanel("Tetragramas", value = 3, plotOutput("plot12"),
+                            width = 250, height = 250),
+                   tabPanel("Pentagramas", value = 3, plotOutput("plot13"),
+                            width = 250, height = 250)),
+        tabPanel("Clusterizacao", value = 4, plotOutput("plot3"),
+                 width = 250, height = 250),
+        tabPanel("KMeans", value = 5, plotOutput("plot4"),
+                 width = 250, height = 250),
+        tabPanel("Redes", value = 6, plotOutput("plot5"),
+                 width = 250, height = 250),
         id = "conditionedPanels"
       )
     )
@@ -252,96 +292,127 @@ shinyApp(
     ###### HISTOGRAMAS
     
     
-    output$plot1 = renderPlot({
+    output$plot1 = renderPlot(width = function() input$width,
+                              height = function() input$height,
+                              res = 96,{
       hist_data = df()[1:input$n1,]
       hist_data %>%
         mutate(ngram = reorder(ngram, n)) %>%
         ggplot(aes(ngram, n)) +
         geom_bar(stat="identity") +
         scale_y_continuous(labels = comma_format()) +
-        coord_flip()
+        coord_flip() +
+        theme(axis.text.x = element_text(size = input$size),
+              axis.text.y = element_text(size = input$size))
     })
     
-    output$plot6 = renderPlot({
+    output$plot6 = renderPlot(width = function() input$width,
+                              height = function() input$height,
+                              res = 96,{
       hist_data = df2()[1:input$n1,]
       hist_data %>%
         mutate(ngram = reorder(ngram, n)) %>%
         ggplot(aes(ngram, n)) +
         geom_bar(stat="identity") +
         scale_y_continuous(labels = comma_format()) +
-        coord_flip() 
+        coord_flip() +
+        theme(axis.text.x = element_text(size = input$size),
+              axis.text.y = element_text(size = input$size))
     })
     
-    output$plot7 = renderPlot({
+    output$plot7 = renderPlot(width = function() input$width,
+                              height = function() input$height,
+                              res = 96,{
       hist_data = df3()[1:input$n1,]
       hist_data %>%
         mutate(ngram = reorder(ngram, n)) %>%
         ggplot(aes(ngram, n)) +
         geom_bar(stat="identity") +
         scale_y_continuous(labels = comma_format()) +
-        coord_flip() 
+        coord_flip() +
+        theme(axis.text.x = element_text(size = input$size),
+              axis.text.y = element_text(size = input$size))
     })
     
-    output$plot8 = renderPlot({
+    output$plot8 = renderPlot(width = function() input$width,
+                              height = function() input$height,
+                              res = 96,{
       hist_data = df4()[1:input$n1,]
       hist_data %>%
         mutate(ngram = reorder(ngram, n)) %>%
         ggplot(aes(ngram, n)) +
         geom_bar(stat="identity") +
         scale_y_continuous(labels = comma_format()) +
-        coord_flip() 
+        coord_flip() +
+        theme(axis.text.x = element_text(size = input$size),
+              axis.text.y = element_text(size = input$size))
     })
     
-    output$plot9 = renderPlot({
+    output$plot9 = renderPlot(width = function() input$width,
+                              height = function() input$height,
+                              res = 96,{
       hist_data = df5()[1:input$n1,]
       hist_data %>%
         mutate(ngram = reorder(ngram, n)) %>%
         ggplot(aes(ngram, n)) +
         geom_bar(stat="identity") +
         scale_y_continuous(labels = comma_format()) +
-        coord_flip() 
+        coord_flip() +
+        theme(axis.text.x = element_text(size = input$size),
+              axis.text.y = element_text(size = input$size))
     })
     
     ### WORDCLOUDS
     
-    output$plot2 = renderPlot({
-      wordcloud(words = d2()$ngram,
-                freq = df2()$n,
+    
+    output$plot2 = renderPlot(width = function() input$width,
+                              height = function() input$height,
+                              res = 96,{
+      wordcloud(words = df()$ngram,
+                freq = df()$n,
                 max.words = input$n2,
-                scale = c(3,0.2),
+                scale = c(input$size3,input$size2),
                 colors = brewer.pal(8, "Dark2"))
     })
+  
     
-    
-    output$plot10 = renderPlot({
+    output$plot10 = renderPlot(width = function() input$width,
+                               height = function() input$height,
+                               res = 96,{
       wordcloud(words = df2()$ngram, 
                 freq = df2()$n,
                 max.words = input$n2, 
-                scale = c(3,0.2),
+                scale = c(input$size3,input$size2),
                 colors = brewer.pal(8, "Dark2"))
     })
     
-    output$plot11 = renderPlot({
+    output$plot11 = renderPlot(width = function() input$width,
+                               height = function() input$height,
+                               res = 96,{
       wordcloud(words = df3()$ngram, 
                 freq = df3()$n,
                 max.words = input$n2, 
-                scale = c(2,0.2),
+                scale = c(input$size3,input$size2),
                 colors = brewer.pal(8, "Dark2"))
     })
     
-    output$plot12 = renderPlot({
+    output$plot12 = renderPlot(width = function() input$width,
+                               height = function() input$height,
+                               res = 96,{
       wordcloud(words = df4()$ngram, 
                 freq = df4()$n,
                 max.words = input$n2, 
-                scale = c(1,0.2),
+                scale = c(input$size3,input$size2),
                 colors = brewer.pal(8, "Dark2"))
     })
     
-    output$plot13 = renderPlot({
+    output$plot13 = renderPlot(width = function() input$width,
+                               height = function() input$height,
+                               res = 96,{
       wordcloud(words = df5()$ngram, 
                 freq = df5()$n,
                 max.words = input$n2, 
-                scale = c(1,0.2),
+                scale = c(input$size3,input$size2),
                 colors = brewer.pal(8, "Dark2"))
     })
     
@@ -363,7 +434,9 @@ shinyApp(
     
     fit = reactive(hclust(d() , method = "ward.D"))
     
-    output$plot3 = renderPlot({
+    output$plot3 = renderPlot(width = function() input$width,
+                              height = function() input$height,
+                              res = 96,{
       # remove sparse terms
       plot(fit(), hang=-1, xlab = "", sub ="")
       rect.hclust(fit(), input$k, border="red") # draw dendogram with red borders around the 5 clusters   
@@ -371,13 +444,17 @@ shinyApp(
     })
     
     d_tdm = reactive(dist(t((as.matrix(tdms()))), method="euclidean"))
-    output$plot4 = renderPlot({
+    output$plot4 = renderPlot(width = function() input$width,
+                              height = function() input$height,
+                              res = 96,{
       kfit = kmeans(d_tdm(), input$k)   
       clusplot(as.matrix(d_tdm()), kfit$cluster, main = "",
                color=T, shade=T, labels=2, lines=0)
     })
     
-    output$plot5  = renderPlot({
+    output$plot5  = renderPlot(width = function() input$width,
+                               height = function() input$height,
+                               res = 96,{
       termDocMatrix = as.matrix(tdms())
       termDocMatrix[termDocMatrix>=1] = 1
       termMatrix = termDocMatrix %*% t(termDocMatrix)
