@@ -281,6 +281,7 @@ token_sentiments_counts %>%
   comparison.cloud(colors = c("red4", "green4"),max.words = 100)
 ggsave(paste0("../02_Resultados/jalapao/Jalapão_wordcloud_sentimentos.png"))
 
+
 sentimentos_tab <- dado %>%
   unnest_tokens(ngram, dados, drop = FALSE) %>%
   mutate(polaridade = unlist(get_polaridade_vec(ngram))) %>%

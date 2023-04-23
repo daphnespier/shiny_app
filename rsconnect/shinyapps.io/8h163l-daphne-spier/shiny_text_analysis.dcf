@@ -5,7 +5,7 @@ account: 8h163l-daphne-spier
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8899340
-bundleId: 7122818
+bundleId: 7123003
 url: https://8h163l-daphne-spier.shinyapps.io/shiny_text_analysis/
-when: 1682208127.09359
-lastSyncTime: 1682208127.09361
+when: 1682213207.89325
+lastSyncTime: 1682213207.89326

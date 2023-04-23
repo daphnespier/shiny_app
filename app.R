@@ -100,9 +100,23 @@ ap_top_terms <- function(x, n){
     top_n(n, beta) %>%
     ungroup() %>%
     arrange(topic, -beta)
-  
-  
-  
+}
+
+sent<-function(val){
+  val %>%
+  mutate(polaridade = unlist(get_polaridade_vec(ngram)))
+
+ token_sentiments <- sentimentos %>%
+  mutate(polaridade = unlist(get_polaridade_vec(sentimentos$ngram))) %>%
+  mutate(sentimento = factor(polaridade, levels = c(-1,0,1), labels = c("Negativo", "Neutro", "Positivo")))
+
+ token_sentiments_counts <- token_sentiments %>% count(ngram, polaridade, sentimento, sort = TRUE)
+ 
+ token_sentiments_counts%>%
+   filter(polaridade != 0) %>%
+   acast(ngram ~ sentimento, value.var = "n", fill = 0)
+
+ return(token_sentiments_counts)
 }
 
 
@@ -150,13 +164,13 @@ shinyApp(
                                    value = 12, step = 2)),
       
       
-      conditionalPanel(condition="input.conditionedPanels==2",
+      conditionalPanel(condition="input.conditionedPanels==2 || input.conditionedPanels==7",
                        hr(),
                        h4("Número de N-gramas"),
                        sliderInput("n1", label = "", min = 1, max = 100, 
                                    value = 20, step = 1)),
       
-      conditionalPanel(condition="input.conditionedPanels==3|| input.conditionedPanels==7",
+      conditionalPanel(condition="input.conditionedPanels==3",
                        hr(),
                        h4("Número de N-gramas"),
                        sliderInput("n2", label = "", min = 1, max = 100, 
@@ -189,7 +203,7 @@ shinyApp(
                        hr(),
                        helpText("Number of clusters"),
                        sliderInput("k", label = "", min = 1, max = 10, 
-                                   value = 5, step = 1))     
+                                   value = 4, step = 1))     
       
     ),
     
@@ -234,6 +248,7 @@ shinyApp(
                    tabPanel("Trigramas", value = 7, plotOutput("plot16")),
                    tabPanel("Tetragramas", value = 7, plotOutput("plot17")),
                    tabPanel("Pentagramas", value = 7, plotOutput("plot18"))),
+        tabPanel("Sentimentos", value = 3, plotOutput("plot19")),
         tabPanel("Clusterizacao", value = 4, plotOutput("plot3"),
                  width = 250, height = 250),
         tabPanel("KMeans", value = 5, plotOutput("plot4"),
@@ -459,7 +474,7 @@ shinyApp(
     
   
     ap_top_terms1 =reactive({
-      ap_top_terms(ap_topics1(), input$n2)       
+      ap_top_terms(ap_topics1(), input$n1)       
     })
  
     
@@ -479,7 +494,7 @@ shinyApp(
     
     
     ap_top_terms2 =reactive({
-      ap_top_terms(ap_topics2(), input$n2)       
+      ap_top_terms(ap_topics2(), input$n1)       
     })
     
     
@@ -499,7 +514,7 @@ shinyApp(
     
     
     ap_top_terms3 =reactive({
-      ap_top_terms(ap_topics3(), input$n2)       
+      ap_top_terms(ap_topics3(), input$n1)       
     })
     
     
@@ -519,7 +534,7 @@ shinyApp(
     
     
     ap_top_terms4 =reactive({
-      ap_top_terms(ap_topics4(), input$n2)       
+      ap_top_terms(ap_topics4(), input$n1)       
     })
     
     
@@ -539,7 +554,7 @@ shinyApp(
     
     
     ap_top_terms5 =reactive({
-      ap_top_terms(ap_topics5(), input$n2)       
+      ap_top_terms(ap_topics5(), input$n1)       
     })
     
     
@@ -551,6 +566,37 @@ shinyApp(
         facet_wrap(~ topic, scales = "free") +
         coord_flip()
     })
+    
+    ### SENTIMENTOS
+    
+    
+    token_sentiments_count <- reactive({
+      
+    sentimentos <- df() %>%
+      mutate(polaridade = unlist(get_polaridade_vec(ngram)))
+    
+    token_sentiments <- sentimentos %>%
+      mutate(polaridade = unlist(get_polaridade_vec(ngram))) %>%
+      mutate(sentimento = factor(polaridade, levels = c(-1,0,1), labels = c("Negativo", "Neutro", "Positivo")))
+      
+    token_sentiments_count <- token_sentiments %>% 
+      count(ngram, polaridade, sentimento, sort = TRUE)
+
+    token_sentiments_count <- token_sentiments_counts %>%
+      filter(polaridade != 0) %>%
+      acast(ngram ~ sentimento, 
+            value.var = "n", fill = 0)
+    })
+   
+    
+    output$plot19 = renderPlot({
+      token_sentiments_count() %>%
+        comparison.cloud(colors = c("red4", "green4"), 
+                         max.words = input$n2,
+                         scale = c(input$size3,input$size2))
+        
+    })
+    
     
     ###### CLUSTERIZAÇÃO
     
