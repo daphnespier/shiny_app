@@ -1,6 +1,6 @@
 require(pacman)
-pacman::p_load(devtools, rvest, httr, XML, dplyr, textreuse, rslp, tm, proxy, factoextra, text2vec, ngram, ggplot2, stringr, stringi, cluster, dendextend, wordcloud, wordcloud2, rmarkdown, knitr, gridExtra, kableExtra, textreuse, syuzhet, RColorBrewer, tidyverse, reshape2, lexiconPT, textdata, tidyr, scales, broom, purrr, widyr,igraph, ggraph, SnowballC, RWekajars, dplyr, tidytext,  topicmodels, quanteda, bookdown, DT, magrittr, shiny, shinyjs)
-options(repos = c("MyRepo"="http://packages.example.com", "CRAN"="https://cran.rstudio.org"))
+pacman::p_load(devtools, rvest, httr, XML, dplyr, textreuse, rslp, tm, proxy, factoextra, text2vec, ngram, ggplot2, stringr, stringi, cluster, dendextend, wordcloud, wordcloud2, rmarkdown, knitr, gridExtra, kableExtra, textreuse, syuzhet, RColorBrewer, tidyverse, reshape2, lexiconPT, textdata, tidyr, scales, broom, purrr, widyr,igraph, ggraph, SnowballC, RWekajars, dplyr, tidytext, topicmodels, quanteda, bookdown, DT, magrittr, shiny, shinyjs)
+
 
 
 # clean data 
@@ -77,6 +77,35 @@ freq_ngrams = function(val, x){
   return(ngram)
 } 
 
+ap_topics<-function(x, k){
+  
+  my_table<- x %>%
+    mutate(ID = 1:nrow(x))%>%
+    select(ID, ngram, n)
+  colnames(my_table)<-c("id", "term", "freq")
+  
+  dtm<-my_table %>%
+    cast_dtm(id, term, freq)
+  
+  ap_lda <- LDA(dtm , k = k, control = list(seed = 123))
+  
+  ap_topics <- tidy(ap_lda, matrix = "beta")
+  
+  return(ap_topics)  
+}
+
+ap_top_terms <- function(x, n){
+  x %>%
+    group_by(topic) %>%
+    top_n(n, beta) %>%
+    ungroup() %>%
+    arrange(topic, -beta)
+  
+  
+  
+}
+
+
 
 # call shiny app
 shinyApp(
@@ -119,7 +148,7 @@ shinyApp(
                        helpText("Tamanho das letras"),
                        sliderInput("size", label = "", min = 8, max =26, 
                                    value = 12, step = 2)),
-     
+      
       
       conditionalPanel(condition="input.conditionedPanels==2",
                        hr(),
@@ -127,7 +156,7 @@ shinyApp(
                        sliderInput("n1", label = "", min = 1, max = 100, 
                                    value = 20, step = 1)),
       
-      conditionalPanel(condition="input.conditionedPanels==3",
+      conditionalPanel(condition="input.conditionedPanels==3|| input.conditionedPanels==7",
                        hr(),
                        h4("Número de N-gramas"),
                        sliderInput("n2", label = "", min = 1, max = 100, 
@@ -146,7 +175,7 @@ shinyApp(
                        helpText("Espaço entre palavras"),
                        sliderInput("size2", label = "", min = 0.1, max =2, 
                                    value = 0.2, step = 0.1)),
-  
+      
       
       conditionalPanel(condition="input.conditionedPanels == 4 ||
                        input.conditionedPanels == 5||input.conditionedPanels == 6",
@@ -156,7 +185,7 @@ shinyApp(
                        sliderInput("sparsity", label = "", min = 0, max = 1, 
                                    value = 0.87, step = 0.01)),
       
-      conditionalPanel(condition="input.conditionedPanels==4 || input.conditionedPanels==5",
+      conditionalPanel(condition="input.conditionedPanels==4 || input.conditionedPanels==5|| input.conditionedPanels==7",
                        hr(),
                        helpText("Number of clusters"),
                        sliderInput("k", label = "", min = 1, max = 10, 
@@ -164,13 +193,13 @@ shinyApp(
       
     ),
     
-   
+    
     
     mainPanel(
-     
+      
       # show plots 
       tabsetPanel(
-        tabPanel("Dados importados", value = 1, DT::dataTableOutput("value")),
+        tabPanel("Dados importados", value = 1, dataTableOutput("value")),
         navbarMenu("Tabelas de Frequencia",
                    tabPanel("Palavras", dataTableOutput("table1")),
                    tabPanel("Bigramas", dataTableOutput("table2")),
@@ -199,6 +228,12 @@ shinyApp(
                             width = 250, height = 250),
                    tabPanel("Pentagramas", value = 3, plotOutput("plot13"),
                             width = 250, height = 250)),
+        navbarMenu("Análise de Tópicos", 
+                   tabPanel("Palavras", value = 7, plotOutput("plot14")),
+                   tabPanel("Bigramas", value = 7, plotOutput("plot15")),
+                   tabPanel("Trigramas", value = 7, plotOutput("plot16")),
+                   tabPanel("Tetragramas", value = 7, plotOutput("plot17")),
+                   tabPanel("Pentagramas", value = 7, plotOutput("plot18"))),
         tabPanel("Clusterizacao", value = 4, plotOutput("plot3"),
                  width = 250, height = 250),
         tabPanel("KMeans", value = 5, plotOutput("plot4"),
@@ -295,72 +330,72 @@ shinyApp(
     output$plot1 = renderPlot(width = function() input$width,
                               height = function() input$height,
                               res = 96,{
-      hist_data = df()[1:input$n1,]
-      hist_data %>%
-        mutate(ngram = reorder(ngram, n)) %>%
-        ggplot(aes(ngram, n)) +
-        geom_bar(stat="identity") +
-        scale_y_continuous(labels = comma_format()) +
-        coord_flip() +
-        theme(axis.text.x = element_text(size = input$size),
-              axis.text.y = element_text(size = input$size))
-    })
+                                hist_data = df()[1:input$n1,]
+                                hist_data %>%
+                                  mutate(ngram = reorder(ngram, n)) %>%
+                                  ggplot(aes(ngram, n)) +
+                                  geom_bar(stat="identity") +
+                                  scale_y_continuous(labels = comma_format()) +
+                                  coord_flip() +
+                                  theme(axis.text.x = element_text(size = input$size),
+                                        axis.text.y = element_text(size = input$size))
+                              })
     
     output$plot6 = renderPlot(width = function() input$width,
                               height = function() input$height,
                               res = 96,{
-      hist_data = df2()[1:input$n1,]
-      hist_data %>%
-        mutate(ngram = reorder(ngram, n)) %>%
-        ggplot(aes(ngram, n)) +
-        geom_bar(stat="identity") +
-        scale_y_continuous(labels = comma_format()) +
-        coord_flip() +
-        theme(axis.text.x = element_text(size = input$size),
-              axis.text.y = element_text(size = input$size))
-    })
+                                hist_data = df2()[1:input$n1,]
+                                hist_data %>%
+                                  mutate(ngram = reorder(ngram, n)) %>%
+                                  ggplot(aes(ngram, n)) +
+                                  geom_bar(stat="identity") +
+                                  scale_y_continuous(labels = comma_format()) +
+                                  coord_flip() +
+                                  theme(axis.text.x = element_text(size = input$size),
+                                        axis.text.y = element_text(size = input$size))
+                              })
     
     output$plot7 = renderPlot(width = function() input$width,
                               height = function() input$height,
                               res = 96,{
-      hist_data = df3()[1:input$n1,]
-      hist_data %>%
-        mutate(ngram = reorder(ngram, n)) %>%
-        ggplot(aes(ngram, n)) +
-        geom_bar(stat="identity") +
-        scale_y_continuous(labels = comma_format()) +
-        coord_flip() +
-        theme(axis.text.x = element_text(size = input$size),
-              axis.text.y = element_text(size = input$size))
-    })
+                                hist_data = df3()[1:input$n1,]
+                                hist_data %>%
+                                  mutate(ngram = reorder(ngram, n)) %>%
+                                  ggplot(aes(ngram, n)) +
+                                  geom_bar(stat="identity") +
+                                  scale_y_continuous(labels = comma_format()) +
+                                  coord_flip() +
+                                  theme(axis.text.x = element_text(size = input$size),
+                                        axis.text.y = element_text(size = input$size))
+                              })
     
     output$plot8 = renderPlot(width = function() input$width,
                               height = function() input$height,
                               res = 96,{
-      hist_data = df4()[1:input$n1,]
-      hist_data %>%
-        mutate(ngram = reorder(ngram, n)) %>%
-        ggplot(aes(ngram, n)) +
-        geom_bar(stat="identity") +
-        scale_y_continuous(labels = comma_format()) +
-        coord_flip() +
-        theme(axis.text.x = element_text(size = input$size),
-              axis.text.y = element_text(size = input$size))
-    })
+                                hist_data = df4()[1:input$n1,]
+                                hist_data %>%
+                                  mutate(ngram = reorder(ngram, n)) %>%
+                                  ggplot(aes(ngram, n)) +
+                                  geom_bar(stat="identity") +
+                                  scale_y_continuous(labels = comma_format()) +
+                                  coord_flip() +
+                                  theme(axis.text.x = element_text(size = input$size),
+                                        axis.text.y = element_text(size = input$size))
+                              })
     
     output$plot9 = renderPlot(width = function() input$width,
                               height = function() input$height,
                               res = 96,{
-      hist_data = df5()[1:input$n1,]
-      hist_data %>%
-        mutate(ngram = reorder(ngram, n)) %>%
-        ggplot(aes(ngram, n)) +
-        geom_bar(stat="identity") +
-        scale_y_continuous(labels = comma_format()) +
-        coord_flip() +
-        theme(axis.text.x = element_text(size = input$size),
-              axis.text.y = element_text(size = input$size))
-    })
+                                hist_data = df5()[1:input$n1,]
+                                hist_data %>%
+                                  mutate(ngram = reorder(ngram, n)) %>%
+                                  ggplot(aes(ngram, n)) +
+                                  geom_bar(stat="identity") +
+                                  scale_y_continuous(labels = comma_format()) +
+                                  coord_flip() +
+                                  theme(axis.text.x = element_text(size = input$size),
+                                        axis.text.y = element_text(size = input$size))
+                              })
     
     ### WORDCLOUDS
     
@@ -368,56 +403,156 @@ shinyApp(
     output$plot2 = renderPlot(width = function() input$width,
                               height = function() input$height,
                               res = 96,{
-      wordcloud(words = df()$ngram,
-                freq = df()$n,
-                max.words = input$n2,
-                scale = c(input$size3,input$size2),
-                colors = brewer.pal(8, "Dark2"))
-    })
-  
+                                wordcloud(words = df()$ngram,
+                                          freq = df()$n,
+                                          max.words = input$n2,
+                                          scale = c(input$size3,input$size2),
+                                          colors = brewer.pal(8, "Dark2"))
+                              })
+    
     
     output$plot10 = renderPlot(width = function() input$width,
                                height = function() input$height,
                                res = 96,{
-      wordcloud(words = df2()$ngram, 
-                freq = df2()$n,
-                max.words = input$n2, 
-                scale = c(input$size3,input$size2),
-                colors = brewer.pal(8, "Dark2"))
-    })
+                                 wordcloud(words = df2()$ngram, 
+                                           freq = df2()$n,
+                                           max.words = input$n2, 
+                                           scale = c(input$size3,input$size2),
+                                           colors = brewer.pal(8, "Dark2"))
+                               })
     
     output$plot11 = renderPlot(width = function() input$width,
                                height = function() input$height,
                                res = 96,{
-      wordcloud(words = df3()$ngram, 
-                freq = df3()$n,
-                max.words = input$n2, 
-                scale = c(input$size3,input$size2),
-                colors = brewer.pal(8, "Dark2"))
-    })
+                                 wordcloud(words = df3()$ngram, 
+                                           freq = df3()$n,
+                                           max.words = input$n2, 
+                                           scale = c(input$size3,input$size2),
+                                           colors = brewer.pal(8, "Dark2"))
+                               })
     
     output$plot12 = renderPlot(width = function() input$width,
                                height = function() input$height,
                                res = 96,{
-      wordcloud(words = df4()$ngram, 
-                freq = df4()$n,
-                max.words = input$n2, 
-                scale = c(input$size3,input$size2),
-                colors = brewer.pal(8, "Dark2"))
-    })
+                                 wordcloud(words = df4()$ngram, 
+                                           freq = df4()$n,
+                                           max.words = input$n2, 
+                                           scale = c(input$size3,input$size2),
+                                           colors = brewer.pal(8, "Dark2"))
+                               })
     
     output$plot13 = renderPlot(width = function() input$width,
                                height = function() input$height,
                                res = 96,{
-      wordcloud(words = df5()$ngram, 
-                freq = df5()$n,
-                max.words = input$n2, 
-                scale = c(input$size3,input$size2),
-                colors = brewer.pal(8, "Dark2"))
+                                 wordcloud(words = df5()$ngram, 
+                                           freq = df5()$n,
+                                           max.words = input$n2, 
+                                           scale = c(input$size3,input$size2),
+                                           colors = brewer.pal(8, "Dark2"))
+                               })
+     ####### TÓPICOS
+    
+    
+    ap_topics1 = reactive({
+      ap_topics(df(), input$k)       
+    })
+    
+  
+    ap_top_terms1 =reactive({
+      ap_top_terms(ap_topics1(), input$n2)       
+    })
+ 
+    
+    output$plot14 = renderPlot({
+                        ap_top_terms1() %>%
+                        mutate(term = reorder(term, beta)) %>%
+                        ggplot(aes(term, beta, fill = factor(topic))) +
+                        geom_col(show.legend = FALSE) +
+                        facet_wrap(~ topic, scales = "free") +
+                        coord_flip()
+                   })
+    
+    
+    ap_topics2 = reactive({
+      ap_topics(df2(), input$k)       
     })
     
     
+    ap_top_terms2 =reactive({
+      ap_top_terms(ap_topics2(), input$n2)       
+    })
     
+    
+    output$plot15 = renderPlot({
+      ap_top_terms2() %>%
+        mutate(term = reorder(term, beta)) %>%
+        ggplot(aes(term, beta, fill = factor(topic))) +
+        geom_col(show.legend = FALSE) +
+        facet_wrap(~ topic, scales = "free") +
+        coord_flip()
+    })
+    
+    
+    ap_topics3 = reactive({
+      ap_topics(df3(), input$k)       
+    })
+    
+    
+    ap_top_terms3 =reactive({
+      ap_top_terms(ap_topics3(), input$n2)       
+    })
+    
+    
+    output$plot16 = renderPlot({
+      ap_top_terms3() %>%
+        mutate(term = reorder(term, beta)) %>%
+        ggplot(aes(term, beta, fill = factor(topic))) +
+        geom_col(show.legend = FALSE) +
+        facet_wrap(~ topic, scales = "free") +
+        coord_flip()
+    })
+    
+    
+    ap_topics4 = reactive({
+      ap_topics(df4(), input$k)       
+    })
+    
+    
+    ap_top_terms4 =reactive({
+      ap_top_terms(ap_topics4(), input$n2)       
+    })
+    
+    
+    output$plot17 = renderPlot({
+      ap_top_terms4() %>%
+        mutate(term = reorder(term, beta)) %>%
+        ggplot(aes(term, beta, fill = factor(topic))) +
+        geom_col(show.legend = FALSE) +
+        facet_wrap(~ topic, scales = "free") +
+        coord_flip()
+    })
+    
+    
+    ap_topics5 = reactive({
+      ap_topics(df5(), input$k)       
+    })
+    
+    
+    ap_top_terms5 =reactive({
+      ap_top_terms(ap_topics5(), input$n2)       
+    })
+    
+    
+    output$plot18 = renderPlot({
+      ap_top_terms5() %>%
+        mutate(term = reorder(term, beta)) %>%
+        ggplot(aes(term, beta, fill = factor(topic))) +
+        geom_col(show.legend = FALSE) +
+        facet_wrap(~ topic, scales = "free") +
+        coord_flip()
+    })
+    
+    ###### CLUSTERIZAÇÃO
     
     tdms = reactive({
       removeSparseTerms(myTdm(), input$sparsity)       
@@ -437,40 +572,40 @@ shinyApp(
     output$plot3 = renderPlot(width = function() input$width,
                               height = function() input$height,
                               res = 96,{
-      # remove sparse terms
-      plot(fit(), hang=-1, xlab = "", sub ="")
-      rect.hclust(fit(), input$k, border="red") # draw dendogram with red borders around the 5 clusters   
-      groups = cutree(fit(), input$k)   # "k=" defines the number of clusters you are using 
-    })
+                                # remove sparse terms
+                                plot(fit(), hang=-1, xlab = "", sub ="")
+                                rect.hclust(fit(), input$k, border="red") # draw dendogram with red borders around the 5 clusters   
+                                groups = cutree(fit(), input$k)   # "k=" defines the number of clusters you are using 
+                              })
     
     d_tdm = reactive(dist(t((as.matrix(tdms()))), method="euclidean"))
     output$plot4 = renderPlot(width = function() input$width,
                               height = function() input$height,
                               res = 96,{
-      kfit = kmeans(d_tdm(), input$k)   
-      clusplot(as.matrix(d_tdm()), kfit$cluster, main = "",
-               color=T, shade=T, labels=2, lines=0)
-    })
+                                kfit = kmeans(d_tdm(), input$k)   
+                                clusplot(as.matrix(d_tdm()), kfit$cluster, main = "",
+                                         color=T, shade=T, labels=2, lines=0)
+                              })
     
     output$plot5  = renderPlot(width = function() input$width,
                                height = function() input$height,
                                res = 96,{
-      termDocMatrix = as.matrix(tdms())
-      termDocMatrix[termDocMatrix>=1] = 1
-      termMatrix = termDocMatrix %*% t(termDocMatrix)
-      g = graph.adjacency(termMatrix, weighted=T, mode = "undirected")
-      V(g)$label = V(g)$name
-      V(g)$degree = degree(g)
-      # remove loops
-      g = simplify(g)
-      V(g)$label.cex = log(rank(V(g)$degree)) + 1
-      V(g)$label.color = rgb(0, 0, .2, .8)
-      V(g)$frame.color = NA
-      egam = (log(E(g)$weight)+.4) / max(log(E(g)$weight)+.4)
-      E(g)$color = rgb(.5, .5, 0, egam)
-      E(g)$width = egam*2
-      plot(g)
-    })
+                                 termDocMatrix = as.matrix(tdms())
+                                 termDocMatrix[termDocMatrix>=1] = 1
+                                 termMatrix = termDocMatrix %*% t(termDocMatrix)
+                                 g = graph.adjacency(termMatrix, weighted=T, mode = "undirected")
+                                 V(g)$label = V(g)$name
+                                 V(g)$degree = degree(g)
+                                 # remove loops
+                                 g = simplify(g)
+                                 V(g)$label.cex = log(rank(V(g)$degree)) + 1
+                                 V(g)$label.color = rgb(0, 0, .2, .8)
+                                 V(g)$frame.color = NA
+                                 egam = (log(E(g)$weight)+.4) / max(log(E(g)$weight)+.4)
+                                 E(g)$color = rgb(.5, .5, 0, egam)
+                                 E(g)$width = egam*2
+                                 plot(g)
+                               })
     
     observe({
       input$reset
