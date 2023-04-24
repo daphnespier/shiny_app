@@ -5,12 +5,9 @@ data<- read.csv2("./01_Dados/00_Comentariosjalapao.csv", encoding = 'UTF-8')
 
 data<-data[,2]
 
-#packrat::install_local("Rsteam")
 
 if(!require(pacman)) install.packages("pacman")
 pacman::p_load(devtools, rvest, httr, XML, dplyr, textreuse, rslp, tm, proxy, factoextra, text2vec, ngram, ggplot2, stringr, stringi, cluster, dendextend, wordcloud, wordcloud2, rmarkdown, knitr, gridExtra, kableExtra, textreuse, syuzhet, RColorBrewer, tidyverse, reshape2, lexiconPT, textdata, tidyr, scales, broom, purrr, widyr,igraph, ggraph, SnowballC, RWekajars, dplyr, tidytext,  topicmodels, quanteda,  quanteda.textstats, bookdown, DT, magrittr, shiny)
-
-
 
 # clean data 
 clean_text = function(dados)
@@ -41,7 +38,7 @@ clean_text = function(dados)
   return(dados)
 }
 
-
+??comparison.cloud
 # stemming 
 dtm = function(dados){
   corpus = Corpus(VectorSource(dados))

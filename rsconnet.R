@@ -1,6 +1,13 @@
 
+
+#renv::install("./Rstem_0.4-1.tar.gz", repos = NULL, type = "source")
+#devtools::install_github("jodavid/sentimentBR", force =T)
+
+#install.packages("./Rstem_0.4-1.tar.gz", repos = NULL, type = "source")
+#library(Rstem)
+#library(sentimentBR)
 library(rsconnect)
-install.packages("renv")
+#install.packages("renv")
 renv::init()
 renv::status()
 

@@ -15,7 +15,7 @@ retirar_plural <- function(palavra,lista){
 
   i=1
 
-  lista_excecao <- as.data.frame(matrix(c("variáveis","variável","tangíveis","tangível","saudáveis","suadável","intangíveis","intangível"),ncol = 2, byrow = TRUE))
+  lista_excecao <- as.data.frame(matrix(c("variáveis","variável","tangíveis","tangível","saudáveis","saudável","intangíveis","intangível"),ncol = 2, byrow = TRUE))
 
   colnames(lista_excecao) <- c("Plural","Singular")
 

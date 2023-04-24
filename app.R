@@ -4,35 +4,33 @@ pacman::p_load(devtools, rvest, httr, XML, dplyr, textreuse, rslp, tm, proxy, fa
 
 
 # clean data 
-clean_text = function(val)
-{
-  x <- c("muita", "muito","ser", "outro", "outra", "tava", "pra", "vai", "vimo", "havia", "cal", "ter",  "ali", "aqui", "tudo", "todo")
-  file_x <- url("https://jodavid.github.io/Slide-Introdu-o-a-Web-Scrapping-com-rvest/stopwords_pt_BR.txt")
-  stopwords_ptBR <- read.table(file_x)
+clean_text = function(dados)
+{ source("./00_Scripts/funcoes.r")
+  file <- url("https://jodavid.github.io/Slide-Introdu-o-a-Web-Scrapping-com-rvest/stopwords_pt_BR.txt")
+  stopwords_ptBR <- read.table(file)
   stopwords_ptBR <- unlist(stopwords_ptBR, use.names = FALSE)
   stopwords_comentarios <- stopwords("portuguese")
   stopwords_iso<-sort(stopwords::stopwords("pt", source = "stopwords-iso"))
-  stopwords<-c(stopwords_comentarios,stopwords_ptBR, stopwords_iso, x)
+  stopwords<-c(stopwords_comentarios,stopwords_ptBR, stopwords_iso)
   dups2 <- duplicated(stopwords)
   sum(dups2)
   stopwords <- stopwords[!dups2]
-  n_stopwords <- c("nao, não")
+  n_stopwords <- c("não", "nao")
   stopwords <-  removeWords(stopwords, n_stopwords)
-  #val<-tibble(val)
-  val <- gsub("\n"," ",val)
-  val <- tolower(val)
-  val<- gsub("\\b\\w{1,2}\\b\\s*", "", val)
-  val <- gsub("[[:punct:]]"," ",val)
-  val <- gsub("([^rs])(?=\\1+)|(rr)(?=r+)|(ss)(?=s+)", "",  val, perl = TRUE)
-  val <- gsub("[^[:alnum:][:space:]]", "", iconv(val, to = "UTF-8//TRANSLIT"))
-  val<- removeNumbers(val)
-  #val<- stemDocument(val)
-  val <- removeWords(val, stopwords)
-  val <- gsub("\n"," ", val)
-  #val<- gsub("\\b\\w{1,2}\\b\\s*", "", val)
-  val<- stripWhitespace(val)
-  val<- na.omit(val)
-  return(val)
+  dados <- gsub("\n"," ", dados)
+  dados<- gsub("\\b\\w{1,2}\\b\\s*", "", dados)
+  dados <- gsub("[[:punct:]]"," ",dados)
+  dados <- gsub("([^rs])(?=\\1+)|(rr)(?=r+)|(ss)(?=s+)", "",  dados, perl = TRUE)
+  dados <- gsub("[^[:alnum:][:space:]]", "", iconv(dados, to = "UTF-8//TRANSLIT"))
+  #dados<- stemDocument(dados)
+  dados <- tolower(dados)
+  dados<- removeNumbers(dados)
+  dados <- removeWords(dados, stopwords)
+  dados<- stripWhitespace(dados)
+  dados<- na.omit(dados)
+  dados <- Retira_Plural(dados)
+  dados <- Representante(dados)
+  return(dados)
 }
 
 
@@ -77,6 +75,19 @@ freq_ngrams = function(val, x){
   return(ngram)
 } 
 
+sent = function(val, x){
+  dados <- tibble(val)
+  
+  dados <- dados %>%
+    filter(is.na(val) == FALSE)
+  
+  ngram<- dados %>%
+    unnest_tokens(ngram, val,  token = "ngrams", n = x)%>%
+    mutate(polaridade = unlist(get_polaridade_vec(ngram)))
+  
+  return(ngram)
+} 
+
 ap_topics<-function(x, k){
   
   my_table<- x %>%
@@ -102,22 +113,6 @@ ap_top_terms <- function(x, n){
     arrange(topic, -beta)
 }
 
-sent<-function(val){
-  val %>%
-  mutate(polaridade = unlist(get_polaridade_vec(ngram)))
-
- token_sentiments <- sentimentos %>%
-  mutate(polaridade = unlist(get_polaridade_vec(sentimentos$ngram))) %>%
-  mutate(sentimento = factor(polaridade, levels = c(-1,0,1), labels = c("Negativo", "Neutro", "Positivo")))
-
- token_sentiments_counts <- token_sentiments %>% count(ngram, polaridade, sentimento, sort = TRUE)
- 
- token_sentiments_counts%>%
-   filter(polaridade != 0) %>%
-   acast(ngram ~ sentimento, value.var = "n", fill = 0)
-
- return(token_sentiments_counts)
-}
 
 
 
@@ -248,7 +243,8 @@ shinyApp(
                    tabPanel("Trigramas", value = 7, plotOutput("plot16")),
                    tabPanel("Tetragramas", value = 7, plotOutput("plot17")),
                    tabPanel("Pentagramas", value = 7, plotOutput("plot18"))),
-        tabPanel("Sentimentos", value = 3, plotOutput("plot19")),
+        tabPanel("Sentimentos", value = 3, plotOutput("plot19"),
+                 width = 250, height = 250),
         tabPanel("Clusterizacao", value = 4, plotOutput("plot3"),
                  width = 250, height = 250),
         tabPanel("KMeans", value = 5, plotOutput("plot4"),
@@ -465,27 +461,27 @@ shinyApp(
                                            scale = c(input$size3,input$size2),
                                            colors = brewer.pal(8, "Dark2"))
                                })
-     ####### TÓPICOS
+    ####### TÓPICOS
     
     
     ap_topics1 = reactive({
       ap_topics(df(), input$k)       
     })
     
-  
+    
     ap_top_terms1 =reactive({
       ap_top_terms(ap_topics1(), input$n1)       
     })
- 
+    
     
     output$plot14 = renderPlot({
-                        ap_top_terms1() %>%
-                        mutate(term = reorder(term, beta)) %>%
-                        ggplot(aes(term, beta, fill = factor(topic))) +
-                        geom_col(show.legend = FALSE) +
-                        facet_wrap(~ topic, scales = "free") +
-                        coord_flip()
-                   })
+      ap_top_terms1() %>%
+        mutate(term = reorder(term, beta)) %>%
+        ggplot(aes(term, beta, fill = factor(topic))) +
+        geom_col(show.legend = FALSE) +
+        facet_wrap(~ topic, scales = "free") +
+        coord_flip()
+    })
     
     
     ap_topics2 = reactive({
@@ -569,32 +565,34 @@ shinyApp(
     
     ### SENTIMENTOS
     
+    dfsent = reactive({
+      sent(dados(),1)
+    })
     
     token_sentiments_count <- reactive({
-      
-    sentimentos <- df() %>%
-      mutate(polaridade = unlist(get_polaridade_vec(ngram)))
     
-    token_sentiments <- sentimentos %>%
-      mutate(polaridade = unlist(get_polaridade_vec(ngram))) %>%
-      mutate(sentimento = factor(polaridade, levels = c(-1,0,1), labels = c("Negativo", "Neutro", "Positivo")))
+      token_sentiments <- dfsent() %>%
+        mutate(polaridade = unlist(get_polaridade_vec(ngram))) %>%
+        mutate(sentimento = factor(polaridade, levels = c(-1,0,1), labels = c("Negativo", "Neutro", "Positivo")))
       
-    token_sentiments_count <- token_sentiments %>% 
-      count(ngram, polaridade, sentimento, sort = TRUE)
-
-    token_sentiments_count <- token_sentiments_counts %>%
-      filter(polaridade != 0) %>%
-      acast(ngram ~ sentimento, 
-            value.var = "n", fill = 0)
+      token_sentiments_count <- token_sentiments %>% 
+        count(ngram, polaridade, sentimento, sort = TRUE)
+      
+      token_sentiments_count <- token_sentiments_count %>%
+        filter(polaridade != 0) %>%
+        acast(ngram ~ sentimento, 
+              value.var = "n", fill = 0)
     })
-   
     
-    output$plot19 = renderPlot({
+    
+    output$plot19 = renderPlot(width = function() input$width,
+                               height = function() input$height,
+                               res = 56,{
       token_sentiments_count() %>%
         comparison.cloud(colors = c("red4", "green4"), 
                          max.words = input$n2,
                          scale = c(input$size3,input$size2))
-        
+      
     })
     
     
