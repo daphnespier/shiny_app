@@ -5,7 +5,7 @@ pacman::p_load(devtools, rvest, httr, XML, dplyr, textreuse, rslp, tm, proxy, fa
 
 # clean data 
 clean_text = function(dados)
-{ source("./00_Scripts/funcoes.r")
+{ source("./funcoes.r")
   file <- url("https://jodavid.github.io/Slide-Introdu-o-a-Web-Scrapping-com-rvest/stopwords_pt_BR.txt")
   stopwords_ptBR <- read.table(file)
   stopwords_ptBR <- unlist(stopwords_ptBR, use.names = FALSE)
