@@ -238,11 +238,16 @@ shinyApp(
                    tabPanel("Pentagramas", value = 3, plotOutput("plot13"),
                             width = 250, height = 250)),
         navbarMenu("Análise de Tópicos", 
-                   tabPanel("Palavras", value = 7, plotOutput("plot14")),
-                   tabPanel("Bigramas", value = 7, plotOutput("plot15")),
-                   tabPanel("Trigramas", value = 7, plotOutput("plot16")),
-                   tabPanel("Tetragramas", value = 7, plotOutput("plot17")),
-                   tabPanel("Pentagramas", value = 7, plotOutput("plot18"))),
+                   tabPanel("Palavras", value = 7, plotOutput("plot14"),
+                            dataTableOutput("table6")),
+                   tabPanel("Bigramas", value = 7, plotOutput("plot15"), 
+                            dataTableOutput("table7")),
+                   tabPanel("Trigramas", value = 7, plotOutput("plot16"),
+                            dataTableOutput("table8")),
+                   tabPanel("Tetragramas", value = 7, plotOutput("plot17"),
+                            dataTableOutput("table9")),
+                   tabPanel("Pentagramas", value = 7, plotOutput("plot18"),
+                            dataTableOutput("table10"))),
         tabPanel("Sentimentos", value = 3, plotOutput("plot19"),
                  width = 250, height = 250),
         tabPanel("Clusterizacao", value = 4, plotOutput("plot3"),
@@ -484,6 +489,12 @@ shinyApp(
     })
     
     
+    output$table6 = renderDataTable(
+      ap_top_terms1()
+    )
+    
+    
+    
     ap_topics2 = reactive({
       ap_topics(df2(), input$k)       
     })
@@ -502,6 +513,10 @@ shinyApp(
         facet_wrap(~ topic, scales = "free") +
         coord_flip()
     })
+    
+    output$table7 = renderDataTable(
+      ap_top_terms2()
+    )
     
     
     ap_topics3 = reactive({
@@ -523,6 +538,10 @@ shinyApp(
         coord_flip()
     })
     
+    output$table8 = renderDataTable(
+      ap_top_terms3()
+    )
+    
     
     ap_topics4 = reactive({
       ap_topics(df4(), input$k)       
@@ -543,6 +562,9 @@ shinyApp(
         coord_flip()
     })
     
+    output$table9 = renderDataTable(
+      ap_top_terms4()
+    )
     
     ap_topics5 = reactive({
       ap_topics(df5(), input$k)       
@@ -562,6 +584,11 @@ shinyApp(
         facet_wrap(~ topic, scales = "free") +
         coord_flip()
     })
+    
+    
+    output$table10 = renderDataTable(
+      ap_top_terms5()
+    )
     
     ### SENTIMENTOS
     

@@ -246,14 +246,6 @@
       "Repository": "CRAN",
       "Hash": "c966ea2957ff75e77afa5c908dfc89e1"
     },
-    "Rstem": {
-      "Package": "Rstem",
-      "Version": "0.4-1",
-      "Source": "Local",
-      "RemoteType": "local",
-      "RemoteUrl": "./Rstem_0.4-1.tar.gz",
-      "Hash": "88b11a1f41dccda06ec4d30b832701a5"
-    },
     "SnowballC": {
       "Package": "SnowballC",
       "Version": "0.7.0",
@@ -2749,24 +2741,6 @@
         "stringr"
       ],
       "Hash": "3838071b66e0c566d55cc26bd6e27bf4"
-    },
-    "sentimentBR": {
-      "Package": "sentimentBR",
-      "Version": "0.3.1",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "sentimentBR",
-      "RemoteUsername": "jodavid",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "dca41bb31218a7f896d7be8c4b1da7235996f289",
-      "Requirements": [
-        "R",
-        "Rstem",
-        "stringi",
-        "tm"
-      ],
-      "Hash": "b0e4434204e7748bbac67bc3a9717d74"
     },
     "sessioninfo": {
       "Package": "sessioninfo",
