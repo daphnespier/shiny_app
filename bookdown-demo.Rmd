@@ -1,0 +1,546 @@
+---
+title: Análises de experiências turísticas do Tripadvisor
+author:
+  - name: Alice Anonymous
+    email: alice@example.com
+    affiliation: Some Institute of Technology
+    correspondingauthor: true
+    footnote: 1
+  - name: Bob Security
+    email: bob@example.com
+    affiliation: Another University
+  - name: Cat Memes
+    email: cat@example.com
+    affiliation: Another University
+    footnote: 2
+  - name: Derek Zoolander
+    email: derek@example.com
+    affiliation: Some Institute of Technology
+    footnote: 2
+address:
+  - code: Some Institute of Technology
+    address: Department, Street, City, State, Zip
+  - code: Another University
+    address: Department, Street, City, State, Zip
+footnote:
+  - code: 1
+    text: "This is the first author footnote."
+  - code: 2
+    text: "Another author footnote."
+resumo: |
+  Investigar a economia da experiência, observando os níveis de interação vivenciados pelos turistas em destinos, pode ser uma importante ferramenta para o melhor aproveitamento e desenvolvimento sustentável de regiões turísticas. Este artigo apresenta uma abordagem para a avaliação dos domínios da experiência de pontos turísticos a partir dos comentários postados na plataforma  Tripadvisor. A interpretação foi realizada empregando-se a netnografia, através de técnicas de mineração de textos, processamento de linguagem natural e classificação de textos com aprendizado de máquina. Os atrativos foram avaliados e classificados considerando as experiências relatadas. A abordagem aqui apresentada contribui para a identificação de lacunas no que tange iniciativas públicas e privadas que possibilitem o atendimento das expectativas dos turistas, tornando os pontos turísticos mais competitivos e viáveis na perspectiva do desenvolvimento sustentável. A  concepção  metodológica  da  pesquisa  pode  se constituir   em uma   importante ferramenta para o estudo do turismo e possibilitar aprofundamentos teóricos e melhorias da oferta de produtos do ecoturismo.
+palavras-chave: 
+ - Economia da Experiência
+ - Mineração de Textos
+ - Processamento de Linguagem Natural
+ - Aprendizado de Máquina
+ - Ferramentas de Análise textual
+abstract: | 
+  Investigating the experience economy, observing the levels of interaction experienced by tourists in destinations, can be an important tool for the best use of and sustainable development of tourist regions. This article presents an approach for evaluating the domains of experience of tourist attractions based on comments posted on the Tripadvisor platform. The interpretation was performed using netnography, through text mining techniques, natural language processing and text classification with machine learning. The attractions were evaluated and classified considering the reported experiences. The approach presented here contributes to the identification of gaps regarding public and private initiatives that make it possible to meet the expectations of tourists, making the most competitive and viable tourist spots in terms of sustainable development. The methodological conception of the research can constitute an important tool for the study of tourism and enable theoretical deepening and improvements in the offer of ecotourism products.
+keywords: 
+  - Experience Economics
+  - Text Mining
+  - Natural Language Processing
+  - Machine Learning
+  - Textual Analysis Tool
+journal: "An awesome journal"
+date: "`r Sys.Date()`"
+classoption: preprint, 3p, authoryear
+bibliography: mybibfile.bib
+linenumbers: false
+numbersections: true
+csl: https://www.zotero.org/styles/elsevier-harvard
+output: 
+    rticles::elsevier_article:
+     keep_tex: true
+     citation_package: natbib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE,  fig.align="center")
+
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load(devtools, rvest, httr, XML, dplyr, textreuse, rslp, tm, proxy, factoextra, text2vec, ngram, ggplot2, stringr, stringi, cluster, dendextend, wordcloud, wordcloud2, rmarkdown, knitr, gridExtra, kableExtra, textreuse, syuzhet, RColorBrewer, tidyverse, reshape2, lexiconPT, textdata, tidyr, scales, broom, purrr, widyr,igraph, ggraph, SnowballC, RWekajars, dplyr, tidytext,  topicmodels, quanteda,  quanteda.textstats, bookdown, DT, magrittr, shiny)
+
+
+```
+
+```{r}
+
+
+
+# clean data 
+clean_text = function(dados)
+{
+   file <- url("https://jodavid.github.io/Slide-Introdu-o-a-Web-Scrapping-com-rvest/stopwords_pt_BR.txt")
+  stopwords_ptBR <- read.table(file)
+  stopwords_ptBR <- unlist(stopwords_ptBR, use.names = FALSE)
+  stopwords_comentarios <- stopwords("portuguese")
+  stopwords_iso<-sort(stopwords::stopwords("pt", source = "stopwords-iso"))
+  stopwords<-c(stopwords_comentarios,stopwords_ptBR, stopwords_iso)
+  dups2 <- duplicated(stopwords)
+  sum(dups2)
+  stopwords <- stopwords[!dups2]
+  n_stopwords <- c("não", "nao")
+  stopwords <-  removeWords(stopwords, n_stopwords)
+  dados <- gsub("\n"," ", dados)
+  dados<- gsub("\\b\\w{1,2}\\b\\s*", "", dados)
+  dados <- gsub("[[:punct:]]"," ",dados)
+  dados <- gsub("([^rs])(?=\\1+)|(rr)(?=r+)|(ss)(?=s+)", "",  dados, perl = TRUE)
+  dados <- gsub("[^[:alnum:][:space:]]", "", iconv(dados, to = "UTF-8//TRANSLIT"))
+  #dados<- stemDocument(dados)
+  dados <- tolower(dados)
+  dados<- removeNumbers(dados)
+  dados <- removeWords(dados, stopwords)
+  dados<- stripWhitespace(dados)
+  dados<- na.omit(dados)
+  dados <- Retira_Plural(dados)
+  dados <- Representante(dados)
+  return(dados)
+}
+
+
+# stemming 
+dtm = function(dados){
+  corpus = Corpus(VectorSource(dados))
+  tdm<-TermDocumentMatrix(corpus, control = list(minWordLength = 3))
+  dtm<- DocumentTermMatrix(corpus, control = list(wordLengths = c(3,Inf)))
+  return(dtm)
+}
+
+tdm = function(dados){
+  corpus = Corpus(VectorSource(dados))
+  tm::TermDocumentMatrix(corpus, control = list(minWordLength = 3))
+}
+
+
+freq_ngrams <- function(dados, n){
+  dados <- tibble(dados)
+  dados <- dados %>%
+    filter(is.na(dados) == FALSE)
+  ngrams <- dados %>%
+    unnest_tokens(ngram, dados, token = "ngrams", n = n)%>%
+    filter(!is.na(ngram)) %>%
+    count(ngram, sort = TRUE)
+  return(ngrams)
+}
+
+
+plot_freq<- function(df){ 
+  df %>%
+  head(40 )%>%
+  mutate(ngram = reorder(ngram, n)) %>%
+  ggplot(aes(ngram, n)) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(labels = comma_format()) +
+  coord_flip() 
+}
+
+ap_topics<-function(x){
+
+my_table<- x %>%
+  mutate(ID = 1:nrow(x))%>%
+  select(ID, ngram, n)
+colnames(my_table)<-c("id", "term", "freq")
+
+dtm<-my_table %>%
+  cast_dtm(id, term, freq)
+
+ap_lda <- LDA(dtm , k = 4, control = list(seed = 123))
+
+ap_topics <- tidy(ap_lda, matrix = "beta")
+
+return(ap_topics)  
+}
+
+ap_top_terms <- function(x){
+  x %>%
+  group_by(topic) %>%
+  top_n(15, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+}
+
+
+```
+
+# Resumo
+
+Investigar a economia da experiência, observando os níveis de interação vivenciados pelos turistas, pode ser uma importante ferramenta para o melhor aproveitamento e desenvolvimento sustentável de regiões turísticas. Este artigo apresenta uma abordagem para a avaliação dos domínios da experiência de pontos turísticos a partir dos comentários postados na plataforma *Tripadvisor*. Foi construído um aplicativo interativo e amigável para auxiliar na interpretação e classificação das experiências relatadas pelos turistas em atrativos turísticos, empregando-se a netnografia, através de técnicas de mineração de textos, processamento de linguagem natural e classificação de textos com aprendizado de máquina. A abordagem aqui apresentada contribui para a identificação de lacunas no que tange iniciativas públicas e privadas que possibilitem o atendimento das expectativas dos turistas, tornando os pontos turísticos mais competitivos e viáveis na perspectiva do desenvolvimento sustentável. A concepção metodológica da pesquisa pode se constituir em uma importante ferramenta para o estudo do turismo e possibilitar aprofundamentos teóricos e melhorias da oferta de produtos do ecoturismo.
+
+*palavras-chave*: Economia da Experiência, Mineração de Textos, Processamento de Linguagem Natural, Aprendizado de Máquina, Ferramentas de Análise textual
+
+# Introdução
+
+O turismo constitui-se em um complexo processo de decisão realizado por diferentes motivações como, por exemplo, a hospedagem, a alimentação, o lazer, a informação turística, o entretenimento, dentre outras variáveis @beni2019analise. Os serviços turísticos não podem ser entendidos como um produto estático, pois eles necessitam de evolução para o crescimento do turismo no Brasil e no mundo @Coelho2007. Tal avanço também perpassa pelo consumidor, visto que ele busca, muito além de produtos e serviços turísticos, novas experiências, alterando gostos e preferências referentes à demanda anterior @Beni2004.
+
+Segundo @Beni2004 deve-se buscar a harmonia entre o que o destino turístico pode oferecer e as experiências turísticas que o visitante busca ao viajar. Há uma mudança significativa nos gostos e preferências dos turistas, que anteriormente buscavam produtos e serviços, e atualmente a procura perpassa, também, pela ambição de experiências novas [@Beni2004]. Essas experiências, entendidas como uma avaliação que o sujeito faz de forma subjetiva quando há submissão às experimentações turísticas (afetivas, cognitivas e comportamentais) se iniciam com a preparação para a imersão, se alongam durante ela, e estendem-se até a completude da experiência, deixando bastante evidente a amplitude de significados gerados pelas experiências (Sun Tung & Ritchie, 2011). Dessa forma, o resultado torna-se extenso, passando pela fidelização do consumidor, a perpetuação do sentido experienciado em sua memória e até a recomendação para outros potenciais consumidores (Coelho, 2007; Aroeira, Dantas & Gosling, 2016; Lobuono, Gosling, Gonçalves &Medeiros, 2016).
+
+Diante dessa perspectiva, Pine e Gilmore (1999) fazem uma diferenciação quanto aos serviços e as experiências: respectivamente, de um lado tem-se um conjunto de atividades intangíveis, e do outro, eventos ou experiências memoráveis. Estas experiências memoráveis são planejadas para engajar o turista ao processo, e não somente entretê-lo. Assim, quatro domínios de experiência foram propostos, a partir de dois eixos, chamados de estágios da estruturação de uma experiência (Figura 1).
+
+O primeiro dos eixos, proposto horizontalmente, refere-se à participação do indivíduo, podendo ser classificada como passiva (passive participation) ou ativa (active participation). Já o eixo vertical representa o aspecto ambiental que interliga indivíduo e experiência: de um lado está a imersão (immersion) e do outro a absorção (absorption). O cruzamento desses dois eixos cria as quatro dimensões ou domínios de experiência: entretenimento, aprendizagem, estética e evasão/escapismo (Pine & Gilmore, 1999).
+
+O primeiro quadrante envolve a dimensão caracterizada como **entretenimento**. É quando o turista busca experiências que sejam divertidas e emocionantes, como parques de diversão, shows, esportes radicais, vida noturna ou atividades em grupo. Trata-se de uma dimensão mais passiva, em que o indivíduo responde aos elementos que lhe são apresentados levando-o a expressar sinais de satisfação, riso e relaxamento (Androkiu & Gândara, 2015; Aroeira, Dantas & Gosling, 2016; Pereira et al., 2020; Fernandes et al., 2020). Dessa forma, a fim de desenvolver um serviço turístico que contemple esta dimensão, deve-se torná-lo mais divertido e admirado (Pine & Gilmore, 1999; Horodyski, Manosso & Gandara, 2012). Em vista disso pode-se resumir que se trata de oferecer opções pessoais de lazer no destino escolhido.
+
+A segunda dimensão consiste na **aprendizagem**. Envolve uma participação ativa do indivíduo com a atividade turística. É quando o turista busca uma experiência que o faça aprender algo novo, como uma cultura diferente, um idioma, uma habilidade ou conhecimento histórico. O aprender demanda que o sujeito interaja e se envolva com o objeto de apreensão (Androkiu & Gândara, 2015; Aroeira, Dantas & Gosling, 2016; Pereira et al., 2020; Fernandes et al., 2020). Nesse sentido, ao se preparar um serviço que contemple a economia da experiência, deve-se definir quais informações pretende-se que o turista absorva, como também, quais habilidades pretende-se que o mesmo pratique durante o consumo, implicando em vivenciar tanto a perspectiva sensorial quanto intelectual (Pine & Gilmore, 1999; Horodyski, Manosso & Gândara, 2012). Aqui depreende-se que contemple a obtenção de contato com aspectos do ambiente, da cultura e da história dos habitantes do local/região visitado.
+
+A terceira dimensão corresponde à **estética/contemplação**. É quando o turista busca experiências que envolvam a apreciação da beleza, seja ela natural ou criada pelo homem. Isso pode incluir visitas a museus, galerias de arte, parques naturais ou cidades históricas. Essa dimensão abrange elementos que atraem o indivíduo por razões visuais, fazendo com que tome a decisão de adentrar em um local e ali permanecer (Aroeira, Dantas & Gosling, 2016; Pereira et al., 2020; Fernandes et al., 2020). Cabe ressaltar que a escolha em incluir a "contemplação" no conceito original de Pine & Gilmore (1999) parte do estudo de Androkiu & Gândara (2015) que considera a dimensão da contemplação como um fator característico da "estética". Ao se propor a oferta de um serviço, a fim de que proporcione ao turista vivenciar esta dimensão, deve-se criar um ambiente convidativo, interessante e confortável, para que ele se sinta impelido a ficar ali (Pine & Gilmore, 1999;Horodyski, Manosso & Gandara, 2012). Pode-se inferir que esta dimensão se caracteriza com a qualidade aparente dos atrativos visitados, que despertam no indivíduo a conduta de admirar o ambiente.
+
+A quarta dimensão refere-se a **evasão/escapismo**. É quando o turista busca uma experiência que o ajude a escapar da realidade e do estresse do dia a dia. Isso pode incluir viagens para lugares isolados e tranquilos, retiros espirituais, spas, praias ou montanhas. Diz respeito à capacidade de fazer com que o turista fique imerso nas atividades que lhe são propostas (Androkiu & Gândara, 2015; Aroeira, Dantas & Gosling, 2016; Pereira et al., 2020; Fernandes et al., 2020). Ao desenvolver produtos turísticos, deve-se criar condições que possibilitem ao indivíduo vivenciar situações que lhe demandem uma participação ativa, bem como, despertem nele (o domínio dos seus sentidos), uma completa imersão, suscitando a manifestação de sentimentos e emoções (Pine & Gilmore, 1999; Horodyski, Manosso & Gandara, 2012). Pode-se dizer que esta dimensão implica em sensações de desprendimento pessoal. Já Schmitt (2002), classifica experiências dessa natureza como equivalentes ao pensamento, à absorção e imaginação do cliente, como por exemplo, o "desligar", "se conectar" com o lugar.
+
+É importante lembrar que esses domínios não são mutuamente exclusivos e que muitas vezes uma única experiência pode incluir elementos de mais de um domínio. Além disso, a maneira como os turistas experimentam cada um desses domínios pode variar de acordo com suas personalidades, interesses e expectativas. Dessa forma, para que a experiência seja memorável, deve-se proporcionar ao turista vivenciar as quatro dimensões. Essa perspectiva analítica oferece ao produtor de serviço turístico, um diagnóstico que permite compreender o atendimento da expectativa do cliente, nestas quatro dimensões, exibindo opções e diretrizes que possam proporcionar uma melhor experiência ao mesmo.
+
+## Apresentação da abordagem realizada
+
+Muitas pessoas e empresas utilizam a internet diariamente para expressar suas opiniões, aumentando a quantidade de dados textuais existente, como é o caso da plataforma *TripAdvisor*. Esses dados textuais podem conter informações valiosas, que muitas vezes, podem ser obtidas com rapidez e baixo custo financeiro, através de técnicas de mineração de texto e processamento de linguagem natural (PLN), que envolvem o uso de tecnologias computacionais para processar e analisar dados em linguagem natural.
+
+A mineração de texto envolve a extração de informações úteis e conhecimento a partir de grandes volumes de texto não estruturado, como documentos, artigos, posts de redes sociais, entre outros. O objetivo é transformar esse texto em dados estruturados, tornando-o mais fácil de ser analisado. As principais etapas da mineração de textos incluem: pré-processamento (limpeza, tokenização, stemming), análise de sentimento, extração de informações (entidades, relações), classificação e clusterização.
+
+Já o processamento da linguagem natural é uma área da inteligência artificial que envolve a compreensão da linguagem humana e a geração de respostas adequadas em linguagem natural, normalmente envolvento algoritmos de aprendizagem de máquina, que podem ser supervisionados, quando os dados já classificados efetivamente definem as categorias e são usados como "dados de treinamento" para construir modelos que possam ser usados para classificar novos dados (Frank et al. 2000), ou não supervisionados, quando não existem categorias pré-definidas. Uma das técnicas PNL não supervisionada é a análise de tópicos, que permite identificar os principais temas e conceitos presentes em um conjunto de dados textuais, como avaliações de usuários e comentários em redes sociais, permitindo identificar padrões e tendências nos comportamentos dos turistas, bem como nas percepções e opiniões dos viajantes sobre destinos, atrações e serviços turísticos.
+
+Uma questão central na mineração de texto e no processamento de linguagem natural é como quantificar do que se trata um documento. Uma medida de quão importante uma palavra pode ser é sua frequência de termo (tf), a frequência com que uma palavra ocorre em um documento. Outra abordagem é observar a frequência inversa de documento (idf) de um termo, que diminui o peso das palavras comumente usadas e aumenta o peso das palavras que não são muito usadas em uma coleção de documentos. Isso pode ser combinado com a frequência do termo para calcular o tf-idf de um termo (as duas quantidades multiplicadas juntas), a frequência de um termo ajustada para quão raramente ele é usado.
+
+A ideia do tf-idf é encontrar as palavras importantes para o conteúdo de cada documento diminuindo o peso das palavras comumente usadas e aumentando o peso das palavras que não são muito usadas em uma coleção ou corpus de documentos e surgiu a partir da *lei de Frequência de Rank Constante de Zipf* que postula que a frequência de ocorrência de algum evento está relacionada a uma função de ordenação. Ela descreve a relação entre a frequência de ocorrência de uma palavra em um corpus de texto e sua classificação de frequência (rank) nesse corpus. A fórmula é dada por:
+
+$f(r) = C / r^α$
+
+Onde:
+
+-   $f(r)$ é a frequência de ocorrência da palavra classificada como rank r.
+-   C é uma constante normalizadora.
+-   α é o expoente Zipf, que pode ser interpretado como uma medida da distribuição de palavras no corpus.
+
+Zipf (1949) mostrou que uma das características das linguagens humanas, populações das cidades e muitos outros fenômenos humanos e naturais, seguem uma distribuição similar, a qual denominou de "Princípio do Menor Esforço". Esta lei define que, tomando um determinado texto, o produto $k_{t} \log(f_{t})$ é aproximadamente constante, em que $f_{t}$ é o número de vezes que o termo $_t$ ocorre no texto e $k_{t}$ é a posição deste termo em uma relação de todos os termos daquele texto, ordenados pela frequência de ocorrência.
+
+Por outro lado, Luhn sugeriu, em 1958, que a frequência de ocorrência das palavras em um texto pode fornecer uma medida útil sobre a expressividade das mesmas (Frants et al. 1997, Moens 2001, Gonzalez & Lima 2003), pois o "autor normalmente repete determinadas palavras ao desenvolver ou variar seus argumentos e ao elaborar diferentes enfoques sobre do que se trata o assunto". As palavras com maior frequência de ocorrência deveriam ser consideradas pouco expressivas porque este conjunto de palavras é composto normalmente por artigos, preposições e conjunções. Também as palavras que muito raramente ocorrem deveriam ser consideradas pouco expressivas justamente em razão da baixa frequência. Restam como expressivas as palavras com maior frequência de ocorrência intermediária.
+
+A tokenização é uma etapa importante do processamento de linguagem natural e é usada em muitas aplicações, como a classificação de textos. Os n-gramas, por sua vez, são conjuntos de n tokens adjacentes em um texto. A escolha do melhor método de tokenização e do tamanho dos n-gramas depende do objetivo do problema. O tamanho ideal dos n-gramas depende do tamanho do texto e da complexidade do problema. N-gramas maiores podem ajudar a capturar contextos mais amplos, mas podem levar a um aumento na dimensionalidade e na esparsidade dos dados, o que pode prejudicar o desempenho do modelo. O tamanho ideal dos n-gramas é geralmente determinado empiricamente, testando-se vários valores em um conjunto de dados de validação.
+
+Nesse contexto, esta pesquisa tem como objetivo disponibilizar uma ferramenta informatizada que possa ser utilizada para a análise dos níveis de experiência e de satisfação de turistas em ambientes naturais. A partir das análises geradas, será possível definir quais os n-gramas mais adequados para serem rotulados com as categorias de entretenimento, aprendizagem, estética e escapismo, possibilitando a utilização de algoritmos de aprendizado supervisionado para a classificação de texto. Assim, modelos de *machine learning* poderão ser treinados para classificar os comentários em cada uma das categorias, através de algoritmos de regressão logística, árvores de decisão e redes neurais. Estudos de casos de pontos turísticos da plataforma Tripadvisor serão apresentados neste artigo, de forma ilustrativa para evidenciar e validar a ferramenta desenvolvida. Portanto, pretende-se com o trabalho, gerar um instrumento que possa ser generalizado e utilizado para qualquer ponto turístico.
+
+## Material e Métodos
+
+Foi construído um aplicativo usando o pacote Shiny do ambiente R de computação estatística, com a proposta de fornecer informações suficientes para contribuir na análise de experiências turísticas. Foi utilizado o *Software* Estatístico R, que é uma linguagem e ambiente para computação estatística e gráficos, o qual incorpora as características de software livre, e o *Rstudio*, que é o ambiente de desenvolvimento integrado (IDE) para a linguagem R. O aplicativo foi desenvolvido utilizando o *Shiny*, que é um framework que possibilita, aos desenvolvedores do R, a criação de aplicações interativas na web, não sendo necessário ao programador ter conhecimento de HTML, CSS ou Javascript. Ele possui um conjunto de funções destinadas a promover a interface com o usuário (ui), onde são coletadas informações fornecidas pelo mesmo, e enviadas para o server, cujo papel é processar as informações coletadas e retorná-las para ui, que dará o feedback ao usuário.
+
+Para realizar a análise da experiência turística de acordo com os quatro domínios da experiência, foram selecionados dois pontos turísticos da Plataforma *TripAdvisor*: ![Jalapão](https://www.tripadvisor.com.br/Attraction_Review-g668997-d17816411-Reviews-JALAPAO_OFICIAL-Palmas_State_of_Tocantins.html) e ![Superagui](https://www.tripadvisor.com.br/Tourism-g3842996-Ilha_do_Superagui_State_of_Parana-Vacations.html). A ***aquisição dos dados*** consistiu em obter os comentários dos turistas através da plataforma *TripAdvisor*, utilizando técnicas de captura de dados (*web scraping*) @munzert2014automated, que consistem de sistemas para a extração automatizada dos dados. A aquisição dos dados foi realizada manualmente e implementada usando o conceito de *web scraping* @munzert2014automated, utilizando o pacote *rvest* do software R. Também foi utilizada a função *gsub* para retirar as marcações do HTML e obter o texto sem formatação.
+
+O aplicativo consistiu em uma página inicial contendo uma barra de navegação de nível superior (navbarPage()) com um conjunto de painéis separados (tabPanel( )), referentes a sete abas temáticas: Importação dos dados; Frequência de N-Gramas; Vizualização das frequências; Redes de Palavras, Análise de Agrupamentos; Análise de sentimentos e Análise de tópicos.
+
+O **pré-processamento** envolveu a transformação das palavras em letras minúsculas, retirada de pontuação e caracteres especiais (p.ex. "!", "\@", "\#","\$") e eliminação de espaços em branco. Existem algumas funções disponíveis para remoçao da pontuação, porém algumas substituem a pontuação por espaços e outras não. A função `removePunctuation` do pacote *tm* é muito utilizada, mas deve ser utilizada com cuidado. O ideal é que sua utilização seja somente em arquivos no formato "corpus" em que as palavras já estão separadas. Atenção também deve ser dada aos caracteres especias, por exemplo o \@. A \ref{tabela1} mostra a comparação das funçoes que substituem a pontuação por espaço ou não.
+
+O caracteres repetidos também fazem parte do processo de limpeza do texto. A função `gsub("(\\w)\\1+", "\\1", data, perl = TRUE)` utiliza expressões regulares para manipulação de strings. A expressão regular `(\\w)\\1+` busca por qualquer caractere alfanumérico `(\\w)` seguido por uma ou mais ocorrências do mesmo caractere `(\\1+)`. O **primeiro** argumento `\\1` é uma referência à captura da primeira parte da expressão, que é o caractere encontrado inicialmente. O **segundo** argumento `\\1` da função `gsub` é o caractere que será utilizado para substituir a ocorrência de caracteres repetidos. Como resultado, essa função produzirá uma string em que todos os caracteres repetidos consecutivos são reduzidos a uma única ocorrência. O argumento `perl = TRUE` diz ao R para usar a sintaxe de expressão regular Perl compatível com PCRE (Perl Compatible Regular Expressions). Isso permite que a expressão regular faça uso de recursos avançados, como lookbehind e lookahead, que não estão disponíveis na sintaxe padrão do R.
+
+Essa função não considera caracteres especiais e **elimina dígrafos**, o que não é uma boa alternativa para o português. Por exemplo, **carro** e **caro** possuem significados diferentes. Uma das alternativas para corrigir isso é tratar **r** e **s** separadamente. Portanto, outra alternativa é utilizar a função `gsub("([^rs])(?=\\1+)|(rr)(?=r+)|(ss)(?=s+)` em que três expressões regulares entre parênteses que estão agrupadas por \| (ou lógico), sendo - `([^rs])(?=\\1+)`: essa expressão corresponde a qualquer caractere que não seja "r" ou "s", desde que não seja seguido de um ou mais caracteres idênticos a ele mesmo. `(?=\\1+)` é um lookahead positivo que verifica se o caractere seguinte é igual ao primeiro caractere. `\\1+` se refere à primeira captura do grupo entre parênteses, que é o caractere correspondido na primeira parte da expressão. - `(rr)(?=r+)`: essa expressão corresponde a duas ocorrências consecutivas do caractere "r", desde que sejam seguidas por um ou mais caracteres "r". - `(ss)(?=s+)`: essa expressão corresponde a duas ocorrências consecutivas do caractere "s", desde que sejam seguidas por um ou mais caracteres "s". Por fim, a função \***gsub("\\b\\w{1,2}\\b\\s\*\*\*\*\*", "", ex)**\* remove todas as palavras com menos de três caracteres.
+
+A remoção de (*stopwords*), que são palavras que ocorrem muitas vezes, mas não fornecem nenhuma contribuição na identificação do conteúdo do texto também foi realizada. Por exemplo: advérbios, artigos, conjunções, preposições e pronomes. O ***stemming*** e o seu melhor representante é um processo que tem a função de diminuir a variação de uma mesma palavra nos documentos, chegando aos radicais e substituindo estes radicais pela palavra mais frequente originalmente. O processo *stemming* foi implementado usando a função do pacote *tm* @feinerer2014text\* (*stemDocument*) e para selecionar o seu melhor representante, foi desenvolvida a função *Representante*. Esta função realiza uma contagem das palavras considerando um dado radical e elege um representante para esse radical, substituindo-o pela palavra com a maior ocorrência.
+
+Posteriormente ao pré-processamento, foi realizada a **geração de N-gramas**, que é um conjunto de tokens candidatos, que podem ser relevantes na análise. Para isso, foi utilizado o conceito de dados organizados, que é uma maneira poderosa de tornar o manuseio de dados mais fácil e eficaz. Conforme descrito por Hadley Wickham [@tidydata], os dados organizados têm uma estrutura específica, sendo **uma tabela com um token por linha.** Um token é uma unidade significativa de texto, como uma palavra, que estamos interessados em usar para análise, e a tokenização é o processo de dividir o texto em unidades menores e significativas. O pacote tidyverse, segundo Wickham et al.(2019), auxilia nesse processo e na composição do seu núcleo, existe um conjunto de pacotes que atendem as premissas da ciência de dados, como o *ggplot2*, *dplyr*, *readr*, *tibble*, *string*, *forcats*, *tidyr*, e *purrr*, que subsidiam as ações de importar, arrumar e visualizar dados.
+
+Após definido o formato de texto organizado como sendo uma tabela com **um token por linha**, os dados foram manipulados sob a forma de **strings**, ou vetores de caracteres, **corpus**, que são objetos anotadas com metadados e detalhes adicionais. e **matrizes documento-termo**, que é matriz esparsa que descreve uma coleção (ou seja, um corpus) de documentos com uma linha para cada documento e uma coluna para cada termo. As proximas análises foram realizadas para cada n-grama, sendo eles: Unigramas ou palavras, bigramas, trigramas, tetragramas e pentagramas. A disponibilização de dados com esta formatação possibilita ao analista interpretar os sentidos das comunicações, facilitando a categorização das palavras, aplicando-se os procedimentos de análise temática proposta por @bardin2011.
+
+Foi calculada a **frequência absoluta (FA)** de n-gramas ou termos, que é a contagem de quantas vezes um determinado token aparece em um documento ou em uma coleção de documento e a **frequência relativa (FR)**, refere-se a quantidade de vezes que um termo aparece em uma coleção de documentos, mas sem considerar as repetições em um mesmo documento. Assim, FR resulta em uma listagem de termos e a porcentagem de documentos em que estes aparecem pelo menos uma vez. A necessidade de se obter FA e FR ocorreu visto que elas se complementam. A FA mostra as frequências das palavras diante de outras palavras na coleção de documentos, enquanto FR mostra quais palavras são relevantes considerando todos os documentos. Ou seja, uma palavra pode ter uma frequência elevada segundo o índice de FA, todavia, pode-se verificar que, apesar disso, essa palavra não aparece em todos os documentos, o que é indicado pela FR. Trata-se, portanto, de operações para refinamento dos dados.
+
+Depois de calculadas as frequencias de termos, foram gerados gráficos úteis para visualizar os resultados, por exemplo as nuvens de palavras, que são representações visuais de um conjunto de palavras em que as palavras mais frequentes são exibidas com maior destaque. É uma forma de visualização de dados que ajuda a identificar rapidamente as palavras mais relevantes em um texto ou conjunto de dados. Elas são úteis para descobrir rapidamente as palavras-chave ou tópicos mais frequentes em um texto, ajudando a resumir as informações de forma concisa e visualmente atraente.
+
+Também foi realizada a distribuição de palavras sucessoras, ou **redes de palavras**, também conhecidas como redes léxicas ou grafos de palavras, que são representações gráficas que mostram as relações entre as palavras em um determinado corpus de texto. O resultado é a construção de conjuntos de palavras que forneçam maior sentido do que termos isolados. Cada palavra é representada por um nó na rede, e as conexões entre elas são representadas por arestas que indicam a frequência e a força das relações entre as palavras.A utilidade das redes de palavras está na capacidade de mostrar as associações semânticas entre as palavras em um corpus, ajudando a identificar tópicos ou temas importantes, palavras-chave e padrões linguísticos.
+
+A construção do **dendrograma** Euclidiano, de @galili2014dendextend, em que palavras com FA semelhantes e com frequência nos mesmos documentos tendem a serem palavras com uma distância euclidiana menor entre si, proporciona indícios de quais palavras são usadas no mesmo contexto. A utilidade deste tipo de apresentação de dados, consiste em oportunizar ao analista identificar conjuntos de termos que podem indicar aspectos relevantes nas ementas e nos anúncios, facilitando a comparação entre estes conjuntos de dados. O dendrograma com a distância Euclidiana foi elaborado com o auxílio do pacote *dendextend* @galili2014dendextend*.*
+
+Foi realizada uma análise de sentimentos, em que as palavras são classificadas como positivas ou negativas com base no dicionário de sentimentos e os resultados são visualizados em um gráfico de dispersão que mostra a frequência de palavras positivas e negativas. Existem vários dicionários para a língua portugusa, como por exemplo:
+
+-   SentiLex-PT: um dicionário de sentimentos para o português que contém cerca de 5.000 palavras classificadas em termos de polaridade (positiva, negativa e neutra) e intensidade (forte, média e fraca).
+
+-   OpLexicon: um dicionário de opinião e sentimento para o português que contém cerca de 30.000 palavras classificadas em termos de polaridade (positiva, negativa e neutra) e subjetividade.
+
+-   Bing: um dicionário de sentimentos em inglês que pode ser utilizado também para a língua portuguesa. Ele contém cerca de 6.800 palavras classificadas em termos de polaridade (positiva ou negativa).
+
+-   LIWC (Linguistic Inquiry and Word Count): um software que analisa o texto em várias dimensões linguísticas, incluindo a análise de sentimentos. Ele contém um dicionário de sentimentos para o português.
+
+-   Emotion-LexPT: um dicionário de emoções para o português que contém cerca de 2.000 palavras classificadas em termos de emoções básicas (como alegria, tristeza, raiva, medo, nojo e surpresa) e emoções secundárias (como admiração, esperança, amor e confusão).
+
+Por fim, a análise de tópicos também foi realizada, permitindo identificar tópicos latentes em um conjunto de documentos. Essa técnica busca agrupar as palavras em torno de temas comuns, identificando os tópicos mais relevantes presentes nos documentos. Foi utilizado o método LDA (Latent Dirichlet Allocation), que é um modelo probabilístico que assume que cada documento é composto por uma mistura de vários tópicos e que cada palavra dentro do documento é gerada a partir de um dos tópicos do documento. Em outras palavras, o LDA é uma técnica que busca descobrir os tópicos subjacentes em um conjunto de documentos, levando em conta a distribuição probabilística das palavras em cada tópico.
+
+Nesse contexto, através de um conjunto de passos que asseguram a captura e organização automática dos dados, pode-se realizar uma análise eficiente dos textos de comentários de turistas. Além da utilização de diversas funções estatísticas bastante conhecidas, foram desenvolvidas funções específicas para o processamento de textos, as quais ainda não estavam disponíveis para o software R @R2017. Partindo do princípio de ciência aberta, foram desenvolvidas ferramentas baseadas em código aberto que permitam fluxos de trabalho reprodutíveis. A abordagem proposta e implementada se encontra disponível juntamente como os arquivos de dados no repositório do [Git-Hub] (<https://github.com/daphnespier/shiny_app>),
+
+# Resultados
+
+## Frequência de n-gramas
+
+```{r }
+
+source("./00_Scripts/funcoes.r")
+data_s<- read.csv2("./01_Dados/00_Comentariossuperagui.csv", encoding = 'UTF-8')
+dados_s<-data_s[,2]
+dados_s <- clean_text(dados_s)
+
+data_j<- read.csv2("./01_Dados/00_Comentariosjalapao.csv", encoding = 'UTF-8')
+dados_j<-data_j[,2]
+dados_j <- clean_text(dados_j)
+
+```
+
+```{r,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+df_s<-freq_ngrams(dados_s, 1)
+df2_s<-freq_ngrams(dados_s, 2)
+df3_s<-freq_ngrams(dados_s, 3)
+df4_s<-freq_ngrams(dados_s, 4)
+df5_s<-freq_ngrams(dados_s, 5)
+
+df_j<-freq_ngrams(dados_j, 1)
+df2_j<-freq_ngrams(dados_j, 2)
+df3_j<-freq_ngrams(dados_j, 3)
+df4_j<-freq_ngrams(dados_j, 4)
+df5_j<-freq_ngrams(dados_j, 5)
+
+```
+
+
+
+```{r,  message=FALSE, warning=FALSE,  fig.align="center"}
+l=15
+
+
+relativa_s <- FreqR_Frase(as.matrix(df_s[1:l,]), dados_s)
+
+nao_bigram_s <- select_word_vetor("não", as.matrix(df2_s[,1:2]), posicao = 1)
+birel_s <- FreqR_Frase(as.matrix(df2_s[1:l,1]),dados_s)
+birel_s <- birel_s[head(order(birel_s[,2],decreasing = TRUE),dim(birel_s)[1]),]
+
+nao_trigram_s <- select_word_vetor("não", as.matrix(df3_s[,1:2]), posicao = 1)
+trirel_s <- FreqR_Frase(as.matrix(df2_s[1:l,1]),dados_s)
+trirel_s <- trirel_s[head(order(trirel_s[,2],decreasing = TRUE),dim(trirel_s)[1]),]
+
+nao_tetragram_s <- select_word_vetor("não", as.matrix(df4_s[,1:2]), posicao = 1)
+tetrarel_s <- FreqR_Frase(as.matrix(df2_s[1:l,1]),dados_s)
+tetrarel_s <- tetrarel_s[head(order(tetrarel_s[,2],decreasing = TRUE),dim(tetrarel_s)[1]),]
+
+nao_pentagram_s <- select_word_vetor("não", as.matrix(df5_s[,1:2]), posicao = 1)
+pentarel_s <- FreqR_Frase(as.matrix(df2_s[1:l,1]),dados_s)
+pentarel_s <- pentarel_s[head(order(pentarel_s[,2],decreasing = TRUE),dim(pentarel_s)[1]),]
+
+
+
+
+relativa_j <- FreqR_Frase(as.matrix(df_j[1:l,]), dados_j)
+
+nao_bigram_j <- select_word_vetor("não", as.matrix(df2_j[,1:2]), posicao = 1)
+birel_j <- FreqR_Frase(as.matrix(df2_j[1:l,1]),dados_j)
+birel_j <- birel_j[head(order(birel_j[,2],decreasing = TRUE),dim(birel_j)[1]),]
+
+nao_trigram_j <- select_word_vetor("não", as.matrix(df3_j[,1:2]), posicao = 1)
+trirel_j <- FreqR_Frase(as.matrix(df2_j[1:l,1]),dados_j)
+trirel_j <- trirel_j[head(order(trirel_j[,2],decreasing = TRUE),dim(trirel_j)[1]),]
+
+nao_tetragram_j <- select_word_vetor("não", as.matrix(df4_j[,1:2]), posicao = 1)
+tetrarel_j <- FreqR_Frase(as.matrix(df2_j[1:l,1]),dados_j)
+tetrarel_j <- tetrarel_j[head(order(tetrarel_j[,2],decreasing = TRUE),dim(tetrarel_j)[1]),]
+
+nao_pentagram_j <- select_word_vetor("não", as.matrix(df5_j[,1:2]), posicao = 1)
+pentarel_j <- FreqR_Frase(as.matrix(df2_j[1:l,1]),dados_j)
+pentarel_j <- pentarel_j[head(order(pentarel_j[,2],decreasing = TRUE),dim(pentarel_j)[1]),]
+```
+
+```{r tab1,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+unigram<-cbind(df_s[1:l,], round(birel_s$FreqR[1:l], 2), df_j[1:l,], round(birel_j$FreqR[1:l], 2))
+colnames(unigram) <- c("Superagui", "FA", "FR", "Jalapão", "FA", "FR")
+
+
+knitr::kable(unigram[1:15,],
+    caption = "\\label{tab1}Frequência de unigramas"
+)
+
+```
+
+Os dados obtidos da platafora *TripAdvisor* resultaram em `nrow(dados_s)` para Superagui e `nrow(dados_j)`para o Jalapão. As frequências de ocorrência dos unigramas podem ser visualizados na \ref{tab1}.
+
+
+
+
+
+```{r tab2,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+unigram<-cbind(df2_s[1:l,], round(relativa_s$FreqR[1:l], 2), df2_j[1:l,], round(relativa_j$FreqR[1:l], 2))
+colnames(bigram) <- c("Superagui", "FA", "FR", "Jalapão", "FA", "FR")
+
+
+knitr::kable(bigram[1:15,],
+    caption = "\\label{tab1}Frequência de unigramas"
+)
+
+```
+
+## Nuvens de Palavras
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+
+plot_wordcloud<-function(df){ 
+        wordcloud(words = df$ngram,
+                freq = df$n,
+                max.words = 80,
+                scale = c(3,0.2),
+                colors = brewer.pal(8, "Dark2"))
+}
+
+plot_wordcloud(df)
+plot_wordcloud(df2)
+plot_wordcloud(df3)
+plot_wordcloud(df4)
+plot_wordcloud(df5)
+
+
+
+
+```
+
+<!-- toc -->
+
+## Rede de Palavras
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+set.seed(1234)
+review_bigrams <- dado %>%
+  unnest_tokens(ngram, dados, token = "ngrams", n = 2) %>%
+  separate(ngram, c("word1", "word2"), sep = " ") %>%
+  count(word1, word2, sort = TRUE)
+
+review_bigrams %>%
+  filter(n >= 5) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "blue") +
+  geom_node_point() +
+  geom_node_text(aes(label = name), repel = TRUE,
+                 point.padding = unit(0.2, "lines")) +
+  ggtitle('Rede de Palavras dos bigramas do TripAdvisor')
+  ggsave(paste0("../02_Resultados/jalapao/bigramas_redes_jalapao.png"))
+
+#####################################################################################
+
+  review_trigrams <- dado %>%
+    unnest_tokens(ngram, dados, token = "ngrams", n = 3) %>%
+    separate(ngram, c("word1", "word2", "word3"), sep = " ") %>%
+    count(word1, word2, word3, sort = TRUE)
+
+  review_trigrams %>%
+    filter(n >= 3) %>%
+    graph_from_data_frame() %>%
+    ggraph(layout = "fr") +
+    geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "blue") +
+    geom_node_point(size = 3) +
+    geom_node_text(aes(label = name), repel = TRUE,
+                   point.padding = unit(0.2, "lines")) +
+    ggtitle('Rede de Palavras dos trigramas do TripAdvisor')
+  ggsave(paste0("../02_Resultados/jalapao/trigramas_redes_jalapao.png"))
+
+```
+
+<!-- toc -->
+
+## Análise de sentimentos
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+dado<-tibble(dados)
+sentimentos <- dado %>%
+  unnest_tokens(ngram, dados, drop = FALSE) %>%
+  mutate(polaridade = unlist(get_polaridade_vec(ngram)))
+
+token_sentiments <- sentimentos %>%
+  mutate(polaridade = unlist(get_polaridade_vec(sentimentos$ngram))) %>%
+  mutate(sentimento = factor(polaridade, levels = c(-1,0,1), labels = c("Negativo", "Neutro", "Positivo")))
+
+token_sentiments_counts <- token_sentiments %>% count(ngram, polaridade, sentimento, sort = TRUE)
+
+token_sentiments_counts %>%
+  filter(polaridade != 0) %>%
+  acast(ngram ~ sentimento, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("red4", "green4"),max.words = 100)
+ggsave(paste0("../02_Resultados/jalapao/Jalapão_wordcloud_sentimentos.png"))
+
+
+sentimentos_tab <- dado %>%
+  unnest_tokens(ngram, dados, drop = FALSE) %>%
+  mutate(polaridade = unlist(get_polaridade_vec(ngram))) %>%
+  group_by(ngram) %>%
+  summarise(sentimento = sum(polaridade)) %>%
+  mutate(sentimento = ifelse(sentimento > 0, "Positivo",
+                             ifelse(sentimento < 0, "Negativo",
+                                    "Neutro")))
+
+```
+
+<!-- toc -->
+
+## Análise de tópicos
+
+```{r ,  message=FALSE, warning=FALSE,  fig.align="center"}
+
+
+
+ap_topics1<-ap_topics(df)
+ap_top_terms1<-ap_top_terms(ap_topics1)
+ap_top_terms1 %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+
+ap_topics2<-ap_topics(df2)
+ap_top_terms2<-ap_top_terms(ap_topics2)
+ap_top_terms2 %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+
+ap_topics3<-ap_topics(df3)
+
+ap_top_terms3<-ap_top_terms(ap_topics3)
+
+ap_top_terms3 %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+
+ap_topics4<-ap_topics(df4)
+ap_top_terms4<-ap_top_terms(ap_topics4)
+ap_top_terms4 %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+
+ap_topics5<-ap_topics(df5)
+ap_top_terms5<-ap_top_terms(ap_topics5)
+ap_top_terms5 %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip()
+
+
+```
+
+# Conclusão
+
+O tema do artigo envolveu o desenvolvimento de um conjunto de instrumentos para o processamento de dados textuais, a fim avaliar a experiência do usuário nos quatro domínios da experiência definidos por Pine and Gilmore, 1999. Isso pode ajudar empresas de turismo e hospitalidade a melhorar a experiência do usuário, identificando áreas de melhoria e desenvolvendo estratégias para atender às expectativas dos clientes.
+
+Foi apresentado um conjunto de passos e instrumentos que possibilitam coletar dados textuais e processá-los de forma que os mesmos sejam organizados em tabelas, gráficos, dendrogramas, dentre outros. Estes instrumentos permitem a melhor estruturação e identificação de informações mais importantes para a análise experiências turísticas.
+
+Para execução da abordagem utilizou-se o software R, visto que é amplamente utilizado para análises estatísticas, possuindo também, pacotes para análise de textos. Nesse sentido algumas funções já existentes para o R foram utilizadas, porém, não foram suficientes para contemplar todas as necessidades de organização dos dados para análise. Assim foram desenvolvidas novas funções, como, para retirar plural, elaborar lista de frequência relativa, elaborar lista de frequência absoluta, distribuição de palavras, frequência relativas de palavras e bigrama relativo.
+
+Sabe-se que existem outros softwares que realizam este trabalho, todavia, o analista fica restrito as funcionalidades inerentes ao software. Nesse sentido, a proposta neste trabalho é fornecer uma ferramenta flexível e de baixo custo para o usuário, que permita a supressão ou inclusão de funcionalidades conforme as suas necessidades.
+
+A fim de testar o instrumento e validar os procedimentos foram feitos dois estudos de casos, para os quais foi seguido o procedimento desenvolvido, possibilitando coletar os dados e organizá-los como pretendido. Com os testes preliminares, ficou demonstrado que a abordagem consegue capturar e organizar automaticamente os dados,
+
+A continuidade deste trabalho envolve o desenvolvimento de um sistema de informação que gere o conjunto de quadros e gráficos apresentados neste trabalho. Outra continuidade na pesquisa, envolve aplicar a metodologia juntamente com especialistas em gestão de pessoas, a fim de desenvolver e verificar possibilidades analíticas em situações reais de tomada de decisão.
+
+# Referências
