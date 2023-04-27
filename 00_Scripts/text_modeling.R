@@ -34,6 +34,7 @@ clean_text = function(dados)
   dados<- removeNumbers(dados)
   dados <- removeWords(dados, stopwords)
   dados<- stripWhitespace(dados)
+  dados<- gsub("\\b\\w{1,2}\\b\\s*", "", dados)
   dados<- na.omit(dados)
   return(dados)
 }
@@ -75,6 +76,15 @@ plot_freq <- function(ngrams){
 }
 
 clean<-clean_text(data)
+
+dados<-tibble(clean)
+
+ngram<- dados %>%
+  unnest_tokens(ngram, clean,  token = "ngrams", n = 5)%>%
+  count(ngram, sort = TRUE)
+
+
+
 myDtm = dtm(clean)
 
 dtms = removeSparseTerms(myDtm, 0.88)       
