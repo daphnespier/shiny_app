@@ -129,6 +129,14 @@ shinyApp(
       
       # select a file 
       fileInput("file", label = h4("Source"), multiple = FALSE),
+      
+      
+      # select stopword
+      radioButtons("tabela_escolhida", label = "Escolha uma tabela:",
+                   choices = c("Stopwords_1", "Stopwords_2", "Stopwords_3", "Stopwords_123"),
+                   selected = "Stopwords_1"),
+      
+      
       # add a reset button 
       actionButton("adicionar", "Adicionar Stopword"),
       
@@ -214,8 +222,24 @@ shinyApp(
       # show plots 
       tabsetPanel(
         tabPanel("Dados importados", value = 1, dataTableOutput("value")),
+        navbarMenu("Stopwords",
+                   tabPanel("Stopwords_1", dataTableOutput("Stopwords_1")),
+                   tabPanel("Stopwords_2", dataTableOutput("Stopwords_2")),
+                   tabPanel("Stopwords_3", dataTableOutput("Stopwords_3")),
+                   tabPanel("Stopwords_123", dataTableOutput("Stopwords_123")),
+                   tabPanel("Stopwords_editável", dataTableOutput("stop"))),
+        navbarMenu("Palavras Removidas",
+                   tabPanel("words_1", dataTableOutput("words_1")),
+                   tabPanel("words_2", dataTableOutput("words_2")),
+                   tabPanel("words_3", dataTableOutput("words_3")),
+                   tabPanel("words_123", dataTableOutput("words_123"))),
         navbarMenu("Pré-processamento",
-                   tabPanel("Stopwords", dataTableOutput("stop")),
+                   tabPanel("Pontuação", dataTableOutput("dados_punct")),
+                   tabPanel("Caracteres Repetidos", dataTableOutput("dados_rep")),
+                   tabPanel("Stopwords", dataTableOutput("dados_stopw")),
+                   tabPanel("Três_caracteres", dataTableOutput("dados_min")),
+                   tabPanel("Retira Plural", dataTableOutput("dados_retiraPlural")),
+                   tabPanel("Representante", dataTableOutput("dados_representante")),
                    tabPanel("Dados processados", dataTableOutput("table"))),
         navbarMenu("Tabelas de Frequencia",
                    tabPanel("Palavras", dataTableOutput("table1")),
@@ -287,7 +311,65 @@ shinyApp(
       data<-tibble(data()) 
     )
     
-    stopw <- reactiveValues(stopw = tibble(stopword = stopwords("portuguese")))
+    ######################################################################
+    
+    stop1 = reactive({
+      file <- url("https://jodavid.github.io/Slide-Introdu-o-a-Web-Scrapping-com-rvest/stopwords_pt_BR.txt")
+      stop1<- read.table(file)
+      stop1<- tibble(stopword = unlist(stop1, use.names = FALSE))
+    })
+    
+    stop2 = reactive({
+      stop2<-sort(stopwords::stopwords("pt", source = "stopwords-iso"))
+      stop2 <- tibble(stopword = stop2)
+    })
+    
+    stop3 = reactive({
+      stop3 <- stopwords("portuguese")
+      stop3 <- tibble(stopword = stop3)
+    })
+    
+    stop4 = reactive({
+      stop4 <- unlist(c(stop1(), stop2(), stop3()))
+      dups2 <- duplicated(stop4)
+      sum(dups2)
+      stop4 <- stop4[!dups2]
+      stop4 <- tibble(stopword = stop4)
+    })
+    
+    
+    output$Stopwords_1 = renderDataTable({
+      datatable(stop1())
+    })
+    
+    output$Stopwords_2 = renderDataTable({
+      datatable(stop2())
+    })
+    
+    output$Stopwords_3 = renderDataTable({
+      datatable(stop3())
+    })
+    
+    output$Stopwords_123 = renderDataTable({
+      datatable(stop4())
+    })
+    ######################################################################
+    
+  
+      
+   
+      
+    
+    
+    stopw <- reactiveValues(stopw = observeEvent(input$tabela_escolhida, {
+      stopw$stopw <-
+        switch(input$tabela_escolhida,
+               "Stopwords_1" = stop1(),
+               "Stopwords_2" = stop2(),
+               "Stopwords_3" = stop3(),
+               "Stopwords_123" = stop4())
+    }))
+  
     
     observeEvent(input$adicionar, {
       novaLinha <- tibble(stopword = NA)
@@ -306,8 +388,6 @@ shinyApp(
     })
     
     
-    
-    
     output$stop = renderDataTable({
       stopw<- datatable(stopw$stopw, editable = TRUE)
     })
@@ -322,52 +402,87 @@ shinyApp(
       stopw$stopw[linha, coluna] <- valor
     })
     
-    
-    myDtm = reactive({
-      clean_data = clean_text(data())
-      dtm(clean_data)
-    })
-    
-    myTdm = reactive({
-      clean_data = clean_text(data())
-      tdm(clean_data)
-    })
+  #########################################################################
     
     dados_punct = reactive({
-      dados<- tibble(data())
-      dados <- gsub("\n"," ", dados)
-      dados<- gsub("\\b\\w{1,2}\\b\\s*", "", dados)
-      dados_punct <- gsub("[[:punct:]]"," ",dados)
+      dados_punct<- tibble(data())
+      dados_punct <- gsub("\n"," ", dados_punct)
+      dados_punct <- gsub("[[:punct:]]"," ", dados_punct)
     })
     
     dados_rep = reactive({
-      dados <- gsub("([^rs])(?=\\1+)|(rr)(?=r+)|(ss)(?=s+)", "",  dados_punct(), perl = TRUE)
-      dados_rep <- gsub("[^[:alnum:][:space:]]", "", iconv(dados, to = "UTF-8//TRANSLIT"))
-      #dados<- stemDocument(dados)
-      
+      dados_rep<- tibble(dados_punct())
+      dados_rep <- gsub("([^rs])(?=\\1+)|(rr)(?=r+)|(ss)(?=s+)", "",  dados_rep, perl = TRUE)
+      dados_rep <- gsub("[^[:alnum:][:space:]]", "", iconv(dados_rep, to = "UTF-8//TRANSLIT"))
     })
+
     
     dados_stopw = reactive({
       tabela_editada<-stopw$stopw
-      dados <- tolower(dados_rep())
-      dados<- removeNumbers(dados)
-      dados <- removeWords(dados,unlist(tabela_editada))
-      dados<- stripWhitespace(dados)
-      dados__stopw<- gsub("\\b\\w{1,2}\\b\\s*", "", dados)
+      dados_stopw <- tolower(dados_rep())
+      dados_stopw<- removeNumbers(dados_stopw)
+      dados_stopw <- removeWords(dados_stopw,unlist(tabela_editada))
+      dados_stopw<- stripWhitespace(dados_stopw)
+      dados_stopw<- gsub("\\b\\w{1,2}\\b\\s*", "", dados_stopw)
+    })
+    
+    dados_min = reactive({
+      dados_min<- tibble(dados_stopw())
+      dados_min<- gsub("\\b\\w{1,2}\\b\\s*", "", dados_min)
+    })
+    
+    dados_retiraPlural = reactive({
+      source("./funcoes.r")
+      dados_retiraPlural <- Retira_Plural(dados_min())
+    })
+    
+    dados_representante = reactive({
+      source("./funcoes.r")
+      dados_representante <- Representante(dados_retiraPlural()) 
     })
     
     dados = reactive({
-      source("./funcoes.r")
-      dados <- Retira_Plural(dados_stopw())
-      dados <- Representante(dados) 
+      dados <- dados_representante() 
+      dados <- tibble(dados) 
     })
     
+    output$dados_punct = renderDataTable({
+      dados_punct<- tibble(dados_punct())
+      datatable(dados_punct)
+    })
+    
+    output$dados_rep = renderDataTable({
+      dados_rep<- tibble(dados_rep())
+      datatable(dados_rep)
+    })
+    
+    output$dados_stopw = renderDataTable({
+      dados_stopw<- tibble(dados_stopw())
+      datatable(dados_stopw)
+    })
+    
+    output$dados_min = renderDataTable({
+      dados_min<- tibble(dados_min())
+      datatable(dados_min)
+    })
+    
+    output$dados_retiraPlural = renderDataTable({
+      dados_retiraPlural<- tibble(dados_retiraPlural())
+      datatable(dados_retiraPlural)
+    })
+    
+    output$dados_representante = renderDataTable({
+      dados_representante<- tibble(dados_representante())
+      datatable(dados_representante)
+    })
     
     output$table = renderDataTable({
-      dados<- tibble(dados_stopw())
-      datatable(dados, editable = TRUE)
+      dados<- tibble(dados())
+      datatable(dados)
     })
     
+    
+    ######################################################################
     
     
     df = reactive({
@@ -698,6 +813,16 @@ shinyApp(
     
     
     ###### CLUSTERIZAÇÃO
+    
+    myDtm = reactive({
+      clean_data = clean_text(data())
+      dtm(clean_data)
+    })
+    
+    myTdm = reactive({
+      clean_data = clean_text(data())
+      tdm(clean_data)
+    })
     
     tdms = reactive({
       removeSparseTerms(myTdm(), input$sparsity)       
