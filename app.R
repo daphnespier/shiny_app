@@ -237,9 +237,9 @@ shinyApp(
                    tabPanel("Pontuação", dataTableOutput("dados_punct")),
                    tabPanel("Caracteres Repetidos", dataTableOutput("dados_rep")),
                    tabPanel("Stopwords", dataTableOutput("dados_stopw")),
-                   tabPanel("Três_caracteres", dataTableOutput("dados_min")),
                    tabPanel("Retira Plural", dataTableOutput("dados_retiraPlural")),
                    tabPanel("Representante", dataTableOutput("dados_representante")),
+                   tabPanel("Três_caracteres", dataTableOutput("dados_min")),
                    tabPanel("Dados processados", dataTableOutput("table"))),
         navbarMenu("Tabelas de Frequencia",
                    tabPanel("Palavras", dataTableOutput("table1")),
@@ -355,10 +355,6 @@ shinyApp(
     })
     ######################################################################
     
-  
-      
-   
-      
     
     
     stopw <- reactiveValues(stopw = observeEvent(input$tabela_escolhida, {
@@ -426,14 +422,10 @@ shinyApp(
       dados_stopw<- gsub("\\b\\w{1,2}\\b\\s*", "", dados_stopw)
     })
     
-    dados_min = reactive({
-      dados_min<- tibble(dados_stopw())
-      dados_min<- gsub("\\b\\w{1,2}\\b\\s*", "", dados_min)
-    })
     
     dados_retiraPlural = reactive({
       source("./funcoes.r")
-      dados_retiraPlural <- Retira_Plural(dados_min())
+      dados_retiraPlural <- Retira_Plural(dados_stopw())
     })
     
     dados_representante = reactive({
@@ -441,9 +433,15 @@ shinyApp(
       dados_representante <- Representante(dados_retiraPlural()) 
     })
     
+    
+    dados_min = reactive({
+      dados_min<- tibble(dados_representante())
+      dados_min<- gsub("\\b\\w{1,2}\\b\\s*", "", dados_min)
+    })
+    
+    
     dados = reactive({
-      dados <- dados_representante() 
-      dados <- tibble(dados) 
+      dados<- dados_min()
     })
     
     output$dados_punct = renderDataTable({
@@ -484,7 +482,72 @@ shinyApp(
     
     ######################################################################
     
+    words_1 = reactive({
+      data<-unlist(data())
+      data<-tibble(data)
+      words_1<- data %>%
+        unnest_tokens(stopword, data,  token = "ngrams", n = 1) 
+      words_1 <- words_1 %>%
+        filter(stopword %in% stop1()$stopword)
+      words_1 <- unique(words_1)
+      
+    })
     
+    output$words_1 = renderDataTable(
+      datatable(words_1())
+    )
+    
+    
+    words_2 = reactive({
+      data<-unlist(data())
+      data<-tibble(data)
+      words_2<- data %>%
+        unnest_tokens(stopword, data,  token = "ngrams", n = 1) 
+      words_2 <- words_2 %>%
+        filter(stopword %in% stop2()$stopword)
+      words_2 <- unique(words_2)
+      
+    })
+    
+    output$words_2 = renderDataTable(
+      datatable(words_2())
+    )
+    
+    words_3 = reactive({
+      data<-unlist(data())
+      data<-tibble(data)
+      words_3<- data %>%
+        unnest_tokens(stopword, data,  token = "ngrams", n = 1) 
+      words_3 <- words_3 %>%
+        filter(stopword %in% stop3()$stopword)
+      words_3 <- unique(words_3)
+      
+    })
+    
+    output$words_3 = renderDataTable(
+      datatable(words_3())
+    )
+    
+    
+    words_123 = reactive({
+      data<-unlist(data())
+      data<-tibble(data)
+      words_123<- data %>%
+        unnest_tokens(stopword, data,  token = "ngrams", n = 1) 
+      words_123 <- words_123 %>%
+        filter(stopword %in% stop4()$stopword)
+      words_123 <- unique(words_123)
+      
+    })
+    
+    output$words_123 = renderDataTable(
+      datatable(words_123())
+    )
+    
+  
+    
+    
+    ######################################################################
     df = reactive({
       freq_ngrams(dados(),1)
     })
