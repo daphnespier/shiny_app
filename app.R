@@ -122,17 +122,20 @@ shinyApp(
   ui = fluidPage(
     titlePanel("Mineração de textos"),
     
+    
     hr(),
     
     sidebarPanel(
-      sliderInput("height", "height", min = 100, max = 800 , value = 550),
-      sliderInput("width", "width", min = 100, max = 800, value = 650),
+      
       # select a file 
       fileInput("file", label = h4("Source"), multiple = FALSE),
-      
       # add a reset button 
-      actionButton("reset", "Reset File"),
+      actionButton("adicionar", "Adicionar Stopword"),
       
+      selectInput("removerlinha", "Remover Stopword", choices = NULL),
+      
+      actionButton("reset", "Reset File"),
+     
       # reset fileInput 
       tags$script('
                   Shiny.addCustomMessageHandler("resetFileInputHandler", function(x) {      
@@ -149,7 +152,8 @@ shinyApp(
                   
                   '),
       
-      
+      sliderInput("height", "height", min = 100, max = 800 , value = 550),
+      sliderInput("width", "width", min = 100, max = 800, value = 650),
       # parameters for each plot
       
       conditionalPanel(condition="input.conditionedPanels == 2",
@@ -210,6 +214,9 @@ shinyApp(
       # show plots 
       tabsetPanel(
         tabPanel("Dados importados", value = 1, dataTableOutput("value")),
+        navbarMenu("Pré-processamento",
+                   tabPanel("Stopwords", dataTableOutput("stop")),
+                   tabPanel("Dados processados", dataTableOutput("table"))),
         navbarMenu("Tabelas de Frequencia",
                    tabPanel("Palavras", dataTableOutput("table1")),
                    tabPanel("Bigramas", dataTableOutput("table2")),
@@ -265,6 +272,7 @@ shinyApp(
   server = function(input, output, session) {
     file = reactive(input$file)
     
+    
     data = reactive({
       if (is.null(file())){
         NULL
@@ -279,6 +287,41 @@ shinyApp(
       data<-tibble(data()) 
     )
     
+    stopw <- reactiveValues(stopw = tibble(stopword = stopwords("portuguese")))
+    
+    observeEvent(input$adicionar, {
+      novaLinha <- tibble(stopword = NA)
+      stopw$stopw <- bind_rows(novaLinha, stopw$stopw)
+    })
+  
+    
+    observe({
+      choices <- c("",  stopw$stopw)
+      updateSelectInput(session, "removerlinha", choices = choices)
+    })
+    
+   
+    observeEvent(input$removerlinha, {
+      stopw$stopw<- stopw$stopw[stopw$stopw != input$removerlinha, ]
+    })
+    
+    
+    
+    
+    output$stop = renderDataTable({
+      stopw<- datatable(stopw$stopw, editable = TRUE)
+    })
+    
+    observeEvent(input$stop_cell_edit, {
+      info <- input$stop_cell_edit
+      linha <- info$row
+      coluna <- info$col
+      valor <- info$value
+      
+      # Atualizar a tabela com os dados editados
+      stopw$stopw[linha, coluna] <- valor
+    })
+    
     
     myDtm = reactive({
       clean_data = clean_text(data())
@@ -290,10 +333,41 @@ shinyApp(
       tdm(clean_data)
     })
     
-    dados = reactive({
-      dados<-tibble(data())
-      dados = clean_text(dados) 
+    dados_punct = reactive({
+      dados<- tibble(data())
+      dados <- gsub("\n"," ", dados)
+      dados<- gsub("\\b\\w{1,2}\\b\\s*", "", dados)
+      dados_punct <- gsub("[[:punct:]]"," ",dados)
     })
+    
+    dados_rep = reactive({
+      dados <- gsub("([^rs])(?=\\1+)|(rr)(?=r+)|(ss)(?=s+)", "",  dados_punct(), perl = TRUE)
+      dados_rep <- gsub("[^[:alnum:][:space:]]", "", iconv(dados, to = "UTF-8//TRANSLIT"))
+      #dados<- stemDocument(dados)
+      
+    })
+    
+    dados_stopw = reactive({
+      tabela_editada<-stopw$stopw
+      dados <- tolower(dados_rep())
+      dados<- removeNumbers(dados)
+      dados <- removeWords(dados,unlist(tabela_editada))
+      dados<- stripWhitespace(dados)
+      dados__stopw<- gsub("\\b\\w{1,2}\\b\\s*", "", dados)
+    })
+    
+    dados = reactive({
+      source("./funcoes.r")
+      dados <- Retira_Plural(dados_stopw())
+      dados <- Representante(dados) 
+    })
+    
+    
+    output$table = renderDataTable({
+      dados<- tibble(dados_stopw())
+      datatable(dados, editable = TRUE)
+    })
+    
     
     
     df = reactive({
@@ -304,7 +378,6 @@ shinyApp(
     output$table1 = renderDataTable(
       df()
     )
-    
     
     df2 = reactive({
       freq_ngrams(dados(),2)
