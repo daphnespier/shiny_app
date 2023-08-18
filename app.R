@@ -142,23 +142,7 @@ shinyApp(
       
       selectInput("removerlinha", "Remover Stopword", choices = NULL),
       
-      actionButton("reset", "Reset File"),
      
-      # reset fileInput 
-      tags$script('
-                  Shiny.addCustomMessageHandler("resetFileInputHandler", function(x) {      
-                  
-                  var id = "#" + x + "_progress";
-                  
-                  var idBar = id + " .bar";
-                  
-                  $(id).css("visibility", "hidden");
-                  
-                  $(idBar).css("width", "0%");
-                  
-                  });
-                  
-                  '),
       
       sliderInput("height", "height", min = 100, max = 800 , value = 550),
       sliderInput("width", "width", min = 100, max = 800, value = 650),
@@ -222,25 +206,19 @@ shinyApp(
       # show plots 
       tabsetPanel(
         tabPanel("Dados importados", value = 1, dataTableOutput("value")),
-        navbarMenu("Stopwords",
-                   tabPanel("Stopwords_1", dataTableOutput("Stopwords_1")),
-                   tabPanel("Stopwords_2", dataTableOutput("Stopwords_2")),
-                   tabPanel("Stopwords_3", dataTableOutput("Stopwords_3")),
-                   tabPanel("Stopwords_123", dataTableOutput("Stopwords_123")),
-                   tabPanel("Stopwords_editável", dataTableOutput("stop"))),
+        tabPanel("Stopwords", dataTableOutput("stop")),
         navbarMenu("Palavras Removidas",
                    tabPanel("words_1", dataTableOutput("words_1")),
                    tabPanel("words_2", dataTableOutput("words_2")),
                    tabPanel("words_3", dataTableOutput("words_3")),
                    tabPanel("words_123", dataTableOutput("words_123"))),
         navbarMenu("Pré-processamento",
-                   tabPanel("Pontuação", dataTableOutput("dados_punct")),
-                   tabPanel("Caracteres Repetidos", dataTableOutput("dados_rep")),
-                   tabPanel("Stopwords", dataTableOutput("dados_stopw")),
+                   tabPanel("Remove pontuação e números", dataTableOutput("dados_punct")),
+                   tabPanel("Remove caracteres repetidos", dataTableOutput("dados_rep")),
+                   tabPanel("Remove stopwords e converte para mínusculo", dataTableOutput("dados_stopw")),
                    tabPanel("Retira Plural", dataTableOutput("dados_retiraPlural")),
-                   tabPanel("Representante", dataTableOutput("dados_representante")),
-                   tabPanel("Três_caracteres", dataTableOutput("dados_min")),
-                   tabPanel("Dados processados", dataTableOutput("table"))),
+                   tabPanel("Elege representante", dataTableOutput("dados_representante")),
+                   tabPanel("Remove acentuação e dois caracteres", dataTableOutput("dados_min"))),
         navbarMenu("Tabelas de Frequencia",
                    tabPanel("Palavras", dataTableOutput("table1")),
                    tabPanel("Bigramas", dataTableOutput("table2")),
@@ -330,7 +308,7 @@ shinyApp(
     })
     
     stop4 = reactive({
-      stop4 <- unlist(c(stop1(), stop2(), stop3()))
+      stop4 <- unlist(c(stop1(), stop2(), stop3()), use.names = FALSE)
       dups2 <- duplicated(stop4)
       sum(dups2)
       stop4 <- stop4[!dups2]
@@ -404,22 +382,20 @@ shinyApp(
       dados_punct<- tibble(data())
       dados_punct <- gsub("\n"," ", dados_punct)
       dados_punct <- gsub("[[:punct:]]"," ", dados_punct)
+      dados_punct<- removeNumbers(dados_punct)
     })
     
     dados_rep = reactive({
       dados_rep<- tibble(dados_punct())
       dados_rep <- gsub("([^rs])(?=\\1+)|(rr)(?=r+)|(ss)(?=s+)", "",  dados_rep, perl = TRUE)
-      dados_rep <- gsub("[^[:alnum:][:space:]]", "", iconv(dados_rep, to = "UTF-8//TRANSLIT"))
     })
 
     
     dados_stopw = reactive({
       tabela_editada<-stopw$stopw
       dados_stopw <- tolower(dados_rep())
-      dados_stopw<- removeNumbers(dados_stopw)
       dados_stopw <- removeWords(dados_stopw,unlist(tabela_editada))
       dados_stopw<- stripWhitespace(dados_stopw)
-      dados_stopw<- gsub("\\b\\w{1,2}\\b\\s*", "", dados_stopw)
     })
     
     
@@ -436,6 +412,7 @@ shinyApp(
     
     dados_min = reactive({
       dados_min<- tibble(dados_representante())
+      dados_min <- gsub("[^[:alnum:][:space:]]", "", iconv(dados_min, to = "ASCII//TRANSLIT"))
       dados_min<- gsub("\\b\\w{1,2}\\b\\s*", "", dados_min)
     })
     
