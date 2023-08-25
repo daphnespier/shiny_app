@@ -133,8 +133,8 @@ shinyApp(
       
       # select stopword
       radioButtons("tabela_escolhida", label = "Escolha uma tabela:",
-                   choices = c("Stopwords_1", "Stopwords_2", "Stopwords_3", "Stopwords_123"),
-                   selected = "Stopwords_1"),
+                   choices = c("Stopwords_1(pt_BR)", "Stopwords_2(pt_ISO)", "Stopwords_3(portuguese)", "Stopwords_123"),
+                   selected = "Stopwords_1(pt_BR)"),
       
       
       # add a reset button 
@@ -338,9 +338,9 @@ shinyApp(
     stopw <- reactiveValues(stopw = observeEvent(input$tabela_escolhida, {
       stopw$stopw <-
         switch(input$tabela_escolhida,
-               "Stopwords_1" = stop1(),
-               "Stopwords_2" = stop2(),
-               "Stopwords_3" = stop3(),
+               "Stopwords_1(pt_BR)" = stop1(),
+               "Stopwords_2(pt_ISO)" = stop2(),
+               "Stopwords_3(portuguese)" = stop3(),
                "Stopwords_123" = stop4())
     }))
   
