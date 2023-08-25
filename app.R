@@ -128,7 +128,7 @@ shinyApp(
     sidebarPanel(
       
       # select a file 
-      fileInput("file", label = h4("Source"), multiple = FALSE),
+      fileInput("file", label = h4("Arquivo com os comentários"), multiple = FALSE),
       
       
       # select stopword
