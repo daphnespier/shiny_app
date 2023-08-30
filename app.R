@@ -218,7 +218,7 @@ shinyApp(
                    tabPanel("Remove stopwords e converte para mínusculo", dataTableOutput("dados_stopw")),
                    tabPanel("Retira Plural", dataTableOutput("dados_retiraPlural")),
                    tabPanel("Elege representante", dataTableOutput("dados_representante")),
-                   tabPanel("Remove acentuação e dois caracteres", dataTableOutput("dados_min"))),
+                   tabPanel("Remove acentuação e dois caracteres", dataTableOutput("table"))),
         navbarMenu("Tabelas de Frequencia",
                    tabPanel("Palavras", dataTableOutput("table1")),
                    tabPanel("Bigramas", dataTableOutput("table2")),
@@ -452,7 +452,7 @@ shinyApp(
     })
     
     output$table = renderDataTable({
-      dados<- tibble(dados())
+      dados<- tibble(dados_representante())
       datatable(dados)
     })
     
