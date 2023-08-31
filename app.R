@@ -218,7 +218,7 @@ shinyApp(
                    tabPanel("Remove stopwords e converte para mínusculo", dataTableOutput("dados_stopw")),
                    tabPanel("Retira Plural", dataTableOutput("dados_retiraPlural")),
                    tabPanel("Elege representante", dataTableOutput("dados_representante")),
-                   tabPanel("Remove acentuação e dois caracteres", dataTableOutput("table"))),
+                   tabPanel("Remove acentuação e dois caracteres", dataTableOutput("dados_min"))),
         navbarMenu("Tabelas de Frequencia",
                    tabPanel("Palavras", dataTableOutput("table1")),
                    tabPanel("Bigramas", dataTableOutput("table2")),
@@ -279,7 +279,8 @@ shinyApp(
       if (is.null(file())){
         NULL
       } else {
-        readLines(file()$datapath) 
+        x<- readLines(file()$datapath) 
+        x <- enc2native(x)
       }
     })
     
@@ -411,7 +412,7 @@ shinyApp(
     
     
     dados_min = reactive({
-      dados_min<- tibble(dados_representante())
+      dados_min<- dados_representante()
       dados_min <- gsub("[^[:alnum:][:space:]]", "", iconv(dados_min, to = "ASCII//TRANSLIT"))
       dados_min<- gsub("\\b\\w{1,2}\\b\\s*", "", dados_min)
     })
@@ -436,11 +437,7 @@ shinyApp(
       datatable(dados_stopw)
     })
     
-    output$dados_min = renderDataTable({
-      dados_min<- tibble(dados_min())
-      datatable(dados_min)
-    })
-    
+  
     output$dados_retiraPlural = renderDataTable({
       dados_retiraPlural<- tibble(dados_retiraPlural())
       datatable(dados_retiraPlural)
@@ -449,6 +446,11 @@ shinyApp(
     output$dados_representante = renderDataTable({
       dados_representante<- tibble(dados_representante())
       datatable(dados_representante)
+    })
+    
+    output$dados_min = renderDataTable({
+      dados_min<- tibble(dados_min())
+      datatable(dados_min)
     })
     
     output$table = renderDataTable({

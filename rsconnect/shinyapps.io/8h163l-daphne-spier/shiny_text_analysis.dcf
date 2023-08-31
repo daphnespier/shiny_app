@@ -5,10 +5,10 @@ account: 8h163l-daphne-spier
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8899340
-bundleId: 7627885
+bundleId: 7632324
 url: https://8h163l-daphne-spier.shinyapps.io/shiny_text_analysis/
-when: 1693443266.60295
-lastSyncTime: 1693443266.60296
+when: 1693523737.40777
+lastSyncTime: 1693523737.40778
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: .Rprofile|00_Scripts/.DS_Store|00_Scripts/text_modeling.R|00_Scripts/text_modeling.Rmd|bookdown-artigo.pdf|bookdown-artigo.Rmd
