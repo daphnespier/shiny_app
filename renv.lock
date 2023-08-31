@@ -2652,6 +2652,21 @@
       "Repository": "CRAN",
       "Hash": "690bd2acc42a9166ce34845884459320"
     },
+    "rticles": {
+      "Package": "rticles",
+      "Version": "0.24",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "knitr",
+        "rmarkdown",
+        "tinytex",
+        "utils",
+        "xfun",
+        "yaml"
+      ],
+      "Hash": "cb84b88016fa556ff9476b71d8d5e3f0"
+    },
     "rversions": {
       "Package": "rversions",
       "Version": "2.1.2",

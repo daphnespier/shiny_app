@@ -206,12 +206,12 @@ shinyApp(
       # show plots 
       tabsetPanel(
         tabPanel("Dados importados", value = 1, dataTableOutput("value")),
-        tabPanel("Stopwords", dataTableOutput("stop")),
-        navbarMenu("Palavras Removidas",
+        navbarMenu("Listas Palavras Removidas",
                    tabPanel("words_1", dataTableOutput("words_1")),
                    tabPanel("words_2", dataTableOutput("words_2")),
                    tabPanel("words_3", dataTableOutput("words_3")),
                    tabPanel("words_123", dataTableOutput("words_123"))),
+        tabPanel("Editar Stopwords", dataTableOutput("stop")),
         navbarMenu("Pré-processamento",
                    tabPanel("Remove pontuação e números", dataTableOutput("dados_punct")),
                    tabPanel("Remove caracteres repetidos", dataTableOutput("dados_rep")),
@@ -452,7 +452,7 @@ shinyApp(
     })
     
     output$table = renderDataTable({
-      dados<- tibble(dados_representante())
+      dados<- tibble(dados())
       datatable(dados)
     })
     
