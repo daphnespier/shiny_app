@@ -4,5 +4,5 @@
 .Ruserdata
 packrat/lib*/
 rsconnect.R
-.DS_store
+.DS_Store
 .R_profile
