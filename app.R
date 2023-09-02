@@ -181,7 +181,7 @@ shinyApp(
                        hr(),
                        helpText("Espaço entre palavras"),
                        sliderInput("size2", label = "", min = 0.1, max =2, 
-                                   value = 0.2, step = 0.1)),
+                                   value = 0.8, step = 0.1)),
       
       
       conditionalPanel(condition="input.conditionedPanels == 4 ||
@@ -190,7 +190,7 @@ shinyApp(
                        h4("Parameters"),
                        helpText("Sparsity"),
                        sliderInput("sparsity", label = "", min = 0, max = 1, 
-                                   value = 0.87, step = 0.01)),
+                                   value = 0.89, step = 0.005)),
       
       conditionalPanel(condition="input.conditionedPanels==4 || input.conditionedPanels==5|| input.conditionedPanels==7",
                        hr(),
