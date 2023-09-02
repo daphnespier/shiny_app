@@ -206,11 +206,11 @@ shinyApp(
       # show plots 
       tabsetPanel(
         tabPanel("Dados importados", value = 1, dataTableOutput("value")),
-        navbarMenu("Listas Palavras Removidas",
-                   tabPanel("words_1", dataTableOutput("words_1")),
-                   tabPanel("words_2", dataTableOutput("words_2")),
-                   tabPanel("words_3", dataTableOutput("words_3")),
-                   tabPanel("words_123", dataTableOutput("words_123"))),
+        navbarMenu("Palavras Removidas",
+                   tabPanel("Stopwords_1", dataTableOutput("words_1")),
+                   tabPanel("Stopwords_2", dataTableOutput("words_2")),
+                   tabPanel("Stopwords_3", dataTableOutput("words_3")),
+                   tabPanel("Stopwords_123", dataTableOutput("words_123"))),
         tabPanel("Editar Stopwords", dataTableOutput("stop")),
         navbarMenu("Pré-processamento",
                    tabPanel("Remove pontuação e números", dataTableOutput("dados_punct")),
@@ -279,8 +279,8 @@ shinyApp(
       if (is.null(file())){
         NULL
       } else {
-        x<- readLines(file()$datapath) 
-        x <- enc2native(x)
+        readLines(file()$datapath) 
+    
       }
     })
     
@@ -413,7 +413,7 @@ shinyApp(
     
     dados_min = reactive({
       dados_min<- dados_representante()
-      dados_min <- gsub("[^[:alnum:][:space:]]", "", iconv(dados_min, to = "ASCII//TRANSLIT"))
+      dados_min <-stri_trans_general(dados_min, "Latin-ASCII")
       dados_min<- gsub("\\b\\w{1,2}\\b\\s*", "", dados_min)
     })
     
