@@ -1,0 +1,8 @@
+classify_emotion	classify_emotion
+classify_polarity	classify_polarity
+create_matrix	create_matrix
+emotions	emotions
+emotionspt	emotionspt
+rm_accent	rm_accent
+subjectivity	subjectivity
+subjectivitypt	subjectivitypt

@@ -1,0 +1,16 @@
+classify_emotion        classifies the emotion (e.g. anger, disgust,
+                        fear, joy, sadness, surprise) of a set of
+                        texts.
+classify_polarity       classifies the polarity (e.g. positive or
+                        negative) of a set of texts.
+create_matrix           Creates an object of class 'DocumentTermMatrix'
+                        from 'tm'.
+emotions                a dataset containing words categorized into six
+                        emotion categories.
+emotionspt              a dataset containing words categorized into six
+                        emotion categories.
+rm_accent               Function to remove accents from words
+subjectivity            a dataset containing a list of positive and
+                        negative subjective words.
+subjectivitypt          a dataset containing a list of positive and
+                        negative subjective words.
